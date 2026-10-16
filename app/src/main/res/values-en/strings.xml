@@ -460,9 +460,9 @@
     <string name="playerpicker_choose_player">Choose a player to watch \"%1$s\"</string>
 
     <string name="search_voice_search">Voice Search</string>
-    <string name="movie_error_title">Couldn't load movie</string>
-    <string name="movie_error_message">The movie details couldn't be loaded. Check your connection and try again.</string>
-    <string name="movie_related_error">Couldn't load related titles.</string>
+    <string name="movie_error_title">Couldn\'t load movie</string>
+    <string name="movie_error_message">The movie details couldn\'t be loaded. Check your connection and try again.</string>
+    <string name="movie_related_error">Couldn\'t load related titles.</string>
 
     <!-- Fix pass 2026-10-17: i18n extraction (country/profile/settings/subtitle/collection) -->
     <string name="country_filter_cd">Filter</string>
