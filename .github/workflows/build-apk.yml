@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,9 +28,22 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload debug APK
+      - name: Rename APK
+        run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
+
+      - name: Upload debug APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: PishiMovie-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Publish to rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest build — آخرین بیلد"
+          body: |
+            آخرین بیلد خودکار از برنچ `main` (نسخه 1.2.2).
+            Latest automatic debug build from the `main` branch.
+          files: app/build/outputs/apk/debug/*.apk
