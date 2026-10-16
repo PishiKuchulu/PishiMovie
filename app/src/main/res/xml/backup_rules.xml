@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PishiMovie auto-backup rules.
+
+  allowBackup stays true, but files that reveal viewing/search behavior or
+  embed streaming source URLs are EXCLUDED from cloud backup. Pure UI
+  preferences (theme via DataStore, font, player/subtitle settings) stay
+  included.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="."/>
+    <include domain="file" path="."/>
+    <include domain="database" path="."/>
+
+    <!-- Viewing / search / download behavior -->
+    <exclude domain="file" path="continue_watching.json"/>
+    <exclude domain="file" path="watch_sessions.json"/>
+    <exclude domain="file" path="watched_episodes.json"/>
+    <exclude domain="file" path="search_history.json"/>
+    <exclude domain="file" path="download_history.json"/>
+
+    <!-- Favorites / watchlist / ratings (embed streaming source URLs) -->
+    <exclude domain="file" path="favorites.json"/>
+    <exclude domain="file" path="favorite_groups.json"/>
+    <exclude domain="file" path="watchlist.json"/>
+    <exclude domain="file" path="user_ratings.json"/>
+
+    <!-- Per-video subtitle overrides (keyed by full video URLs) -->
+    <exclude domain="file" path="subtitle_per_video.json"/>
+
+    <!-- Cached metadata / detail files (re-fetchable) -->
+    <exclude domain="file" path="pishi_metadata_cache/"/>
+    <exclude domain="file" path="detail_cache/"/>
+</full-backup-content>

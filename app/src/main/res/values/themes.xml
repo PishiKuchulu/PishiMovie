@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        PishiMovie theme — applies Vazirmatn (the open-source IranSans-equivalent
+        Persian font) as the global font family for view-based UI (ExoPlayer's
+        PlayerView, system dialogs, etc). The Compose UI picks up the same font
+        via [com.pishimovie.ui.theme.FontManager].
+    -->
+    <style name="Theme.PishiMovie" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/iransans</item>
+        <item name="android:typeface">normal</item>
+    </style>
+
+    <style name="Theme.PishiMovie.FullScreen" parent="Theme.PishiMovie">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>

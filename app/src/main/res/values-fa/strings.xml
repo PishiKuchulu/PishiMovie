@@ -1,0 +1,480 @@
+<resources>
+    <string name="app_name">پیشی‌مووی</string>
+
+    <!-- Navigation -->
+    <string name="home">خانه</string>
+    <string name="movies">فیلم</string>
+    <string name="series">سریال</string>
+    <string name="search">جستجو</string>
+    <string name="settings">تنظیمات</string>
+    <string name="about">درباره</string>
+    <string name="movie_details">جزئیات فیلم</string>
+    <string name="series_details">جزئیات سریال</string>
+    <string name="video_player">پخش‌کننده</string>
+    <string name="favorites">علاقه‌مندی‌ها</string>
+    <string name="country">کشور</string>
+    <string name="library">کتابخانه</string>
+    <string name="downloads">دانلودها</string>
+    <string name="profile">پروفایل</string>
+    <string name="watch_history">تاریخچه تماشا</string>
+    <string name="more">بیشتر</string>
+    <string name="discover">کاوش</string>
+    <string name="back">بازگشت</string>
+
+    <!-- Home sections -->
+    <string name="continue_watching">ادامه تماشا</string>
+    <string name="recommended_for_you">پیشنهادی برای شما</string>
+    <string name="recommended_subtitle">با هوش مصنوعی پیشی‌مووی</string>
+    <string name="trending">ترند امروز</string>
+    <string name="trending_today">ترند امروز</string>
+    <string name="top_imdb">برترین‌های IMDb</string>
+    <string name="new_releases">تازه اضافه شده</string>
+    <string name="recently_added">تازه اضافه شده</string>
+    <string name="featured_movies">فیلم‌های منتخب</string>
+    <string name="featured_tv_series">سریال‌های منتخب</string>
+    <string name="popular_movies">فیلم‌های محبوب</string>
+    <string name="popular_tv_series">سریال‌های محبوب</string>
+    <string name="popular_series">سریال‌های محبوب</string>
+    <string name="anime_section">انیمه و انیمیشن</string>
+    <string name="collections">مجموعه‌ها</string>
+    <string name="collections_subtitle">جهان‌های سینمایی منتخب</string>
+    <string name="genres">ژانرها</string>
+    <string name="countries">کشورها</string>
+    <string name="favorite_genres">ژانرهای مورد علاقه</string>
+    <string name="because_you_watched">چون تماشا کردید</string>
+    <string name="mood_mode">حالت پیشنهادی</string>
+    <string name="mood_subtitle">حالت خود را انتخاب کنید</string>
+    <string name="more_like_this">مشابه این</string>
+    <string name="movie_universes">جهان‌های سینمایی</string>
+    <string name="recently_watched">تازه تماشا شده</string>
+    <string name="download_queue">صف دانلود</string>
+    <string name="achievements">دستاوردها</string>
+    <string name="achievements_subtitle">%1$d از %2$d باز شده</string>
+
+    <!-- Detail screen -->
+    <string name="play">پخش</string>
+    <string name="trailer">تریلر</string>
+    <string name="add_to_favorites">افزودن به علاقه‌مندی‌ها</string>
+    <string name="added_to_favorites">به علاقه‌مندی‌ها افزوده شد</string>
+    <string name="removed_from_favorites">از علاقه‌مندی‌ها حذف شد</string>
+    <string name="add_to_watchlist">افزودن به لیست تماشا</string>
+    <string name="added_to_watchlist">به لیست تماشا افزوده شد</string>
+    <string name="removed_from_watchlist">از لیست تماشا حذف شد</string>
+    <string name="watchlist">لیست تماشا</string>
+    <string name="share">اشتراک‌گذاری</string>
+    <string name="download">دانلود و پخش</string>
+    <string name="resume">ادامه</string>
+    <string name="resume_playback">ادامه پخش</string>
+    <string name="resume_playback_subtitle">از جایی که قبلاً تماشا کرده‌اید ادامه دهید</string>
+    <string name="statistics">آمار</string>
+    <string name="history">تاریخچه</string>
+    <string name="all_rights_reserved">تمامی حقوق محفوظ است.</string>
+
+    <!-- Movie metadata -->
+    <string name="imdb_rating">امتیاز IMDb</string>
+    <string name="user_rating">امتیاز شما</string>
+    <string name="release_year">سال انتشار</string>
+    <string name="runtime">مدت زمان</string>
+    <string name="language">زبان</string>
+    <string name="language_original">زبان اصلی</string>
+    <string name="country_label">کشور</string>
+    <string name="genres_label">ژانرها</string>
+    <string name="cast">بازیگران</string>
+    <string name="director">کارگردان</string>
+    <string name="studio">استودیو</string>
+    <string name="not_available">—</string>
+    <string name="pishimovie_library">کتابخانه پیشی‌مووی</string>
+
+    <!-- Player -->
+    <string name="play_with">پخش با</string>
+    <string name="choose_player">یک پخش‌کننده برای تماشا انتخاب کنید%1$s</string>
+    <string name="internal_player">پخش داخلی</string>
+    <string name="vlc_player">VLC</string>
+    <string name="mx_player">MX Player</string>
+    <string name="km_player">KMPlayer</string>
+    <string name="browser_player">مرورگر</string>
+    <string name="other_players">سایر پخش‌کننده‌ها</string>
+    <string name="cancel">انصراف</string>
+    <string name="close">بستن</string>
+    <string name="initializing_player">در حال آماده‌سازی پخش‌کننده…</string>
+    <string name="playback_error">خطای پخش</string>
+    <string name="retry">تلاش مجدد</string>
+    <string name="open_in_browser">باز کردن در مرورگر</string>
+    <string name="skip_intro">رد کردن شروع</string>
+    <string name="tracks_quality">صدا، زیرنویس و کیفیت</string>
+    <string name="quality">کیفیت</string>
+    <string name="audio">صدا</string>
+    <string name="subtitles">زیرنویس</string>
+    <string name="no_subtitles">زیرنویس موجود نیست</string>
+    <string name="auto_quality">خودکار</string>
+    <string name="highest_quality">بالاترین</string>
+    <string name="lowest_quality">پایین‌ترین</string>
+    <string name="off">خاموش</string>
+    <string name="lock">قفل</string>
+    <string name="unlock">باز کردن قفل</string>
+    <string name="pip">تصویر در تصویر</string>
+    <string name="no_video_player_installed">هیچ پخش‌کننده‌ای نصب نیست</string>
+    <string name="title_copied">عنوان کپی شد</string>
+
+    <!-- Download -->
+    <string name="download_options">گزینه‌های دانلود</string>
+    <string name="download_with_browser">دانلود با مرورگر</string>
+    <string name="download_with_adm">دانلود با ADM</string>
+    <string name="download_play_options">گزینه‌های دانلود و پخش</string>
+    <string name="download_play_options_desc">نحوه برخورد با این ویدیو را انتخاب کنید</string>
+    <string name="play_options">گزینه‌های پخش</string>
+    <string name="open_in_vlc">باز کردن در VLC</string>
+    <string name="open_in_mx_player">باز کردن در MX Player</string>
+    <string name="open_in_km_player">باز کردن در KMPlayer</string>
+    <string name="play_in_pishimovie">پخش در پیشی‌مووی</string>
+    <string name="copy_link">کپی لینک</string>
+    <string name="choose_action_for_image">یک عمل برای این تصویر انتخاب کنید</string>
+    <string name="image_options">گزینه‌های تصویر</string>
+    <string name="copy_image_url">کپی آدرس تصویر</string>
+
+    <!-- Settings -->
+    <string name="player_section">پخش‌کننده</string>
+    <string name="default_player">پخش‌کننده پیش‌فرض</string>
+    <string name="playback_section">پخش</string>
+    <string name="seek_interval">بازه پرش</string>
+    <string name="playback_speed">سرعت پخش</string>
+    <string name="storage_section">ذخیره‌سازی</string>
+    <string name="cache_management">مدیریت حافظه پنهان</string>
+    <string name="cache_subtitle">حافظه تصاویر و API: %1$s</string>
+    <string name="cache_cleared">حافظه پنهان پاک شد</string>
+    <string name="error_clearing_cache">خطا در پاکسازی حافظه پنهان</string>
+    <string name="series_episodes_cache">حافظه قسمت‌های سریال</string>
+    <string name="series_episodes_size">اندازه: %1$s</string>
+    <string name="empty">خالی</string>
+    <string name="about_section">درباره</string>
+    <string name="about_pishimovie">درباره پیشی‌مووی</string>
+    <string name="about_subtitle">درباره برنامه بیشتر بدانید</string>
+    <string name="reset_to_defaults">بازگردانی به حالت پیش‌فرض</string>
+    <string name="reset_subtitle">بازگردانی تنظیمات زیرنویس و پخش</string>
+    <string name="reset_settings">بازگردانی تنظیمات</string>
+    <string name="reset_dialog_message">تنظیمات زیرنویس و پخش به حالت پیش‌فرض بازگردانده شود؟</string>
+    <string name="reset">بازگردانی</string>
+    <string name="clear_watched_episodes">پاک کردن قسمت‌های دیده‌شده</string>
+    <string name="clear_watched_episodes_message">همه قسمت‌های دیده‌شده پاک شود؟ این عمل قابل بازگشت نیست.</string>
+    <string name="clear_all">پاک کردن همه</string>
+    <string name="clear">پاک کردن</string>
+    <string name="watched_episodes_cleared">حافظه قسمت‌های دیده‌شده پاک شد</string>
+    <string name="error_clearing_cache_alt">خطا در پاکسازی حافظه</string>
+    <string name="built_in">داخلی</string>
+
+    <!-- Subtitle settings -->
+    <string name="subtitle_settings">تنظیمات زیرنویس</string>
+    <string name="subtitle_settings_shortcut_subtitle">فونت، رنگ، حاشیه، سایه، پروفایل، هر ویدیو</string>
+    <string name="subtitle_settings_basic">پایه</string>
+    <string name="subtitle_settings_appearance">ظاهر</string>
+    <string name="subtitle_settings_advanced">پیشرفته</string>
+    <string name="subtitle_settings_preview">پیش‌نمایش زنده</string>
+    <string name="subtitle_settings_profiles">پروفایل‌ها</string>
+    <string name="subtitle_settings_per_video">تنظیمات هر ویدیو</string>
+    <string name="save_current">ذخیره فعلی</string>
+    <string name="save_current_as_preset">ذخیره به‌عنوان پروفایل</string>
+    <string name="preset_name">نام پروفایل</string>
+    <string name="save">ذخیره</string>
+    <string name="preset_saved">پروفایل ذخیره شد: %1$s</string>
+    <string name="reset_to_defaults_toast">بازگردانی به حالت پیش‌فرض</string>
+
+    <!-- Basic section -->
+    <string name="subtitles_enabled">زیرنویس فعال</string>
+    <string name="subtitles_enabled_desc">نمایش زیرنویس هنگام پخش</string>
+    <string name="subtitle_language">زبان زیرنویس</string>
+    <string name="subtitle_download">دانلود زیرنویس</string>
+    <string name="subtitle_download_desc">جستجوی خودکار، دستی و همگام‌سازی</string>
+    <string name="load_local_subtitle">بارگذاری زیرنویس محلی</string>
+    <string name="load_local_subtitle_desc">.srt .ass .ssa .sub .vtt</string>
+    <string name="local_subtitle_attached">زیرنویس محلی بارگذاری شد</string>
+    <string name="local_subtitle_attached_toast">زیرنویس محلی بارگذاری شد</string>
+    <string name="local_subtitle_apply_per_video">زیرنویس بارگذاری شد (بر هر ویدیو اعمال می‌شود)</string>
+    <string name="character_encoding">کدگذاری کاراکترها</string>
+    <string name="font_size">اندازه فونت</string>
+    <string name="subtitle_delay">تأخیر زیرنویس</string>
+    <string name="subtitle_position">موقعیت زیرنویس</string>
+    <string name="use_global">استفاده از سراسری</string>
+    <string name="per_video_override_active">تنظیم مخصوص این ویدیو فعال است</string>
+    <string name="per_video_mode">حالت مخصوص ویدیو</string>
+    <string name="per_video_adjustments">تغییرات مخصوص این ویدیو</string>
+    <string name="per_video_active_delay">تأخیر/اندازه/زبان مخصوص این ویدیو اعمال شد</string>
+    <string name="per_video_active_no_overrides">تغییرات فقط برای این ویدیو اعمال می‌شود</string>
+    <string name="per_video_cleared">تغییرات مخصوص این ویدیو پاک شد</string>
+
+    <!-- Appearance section -->
+    <string name="font_family">خانواده فونت</string>
+    <string name="font_scale">مقیاس فونت</string>
+    <string name="font_color">رنگ فونت</string>
+    <string name="bold">پررنگ</string>
+    <string name="italic">کج</string>
+    <string name="border_color">رنگ حاشیه</string>
+    <string name="border_thickness">ضخامت حاشیه</string>
+    <string name="drop_shadow">سایه</string>
+    <string name="drop_shadow_desc">سایه نرم زیر متن</string>
+    <string name="shadow_strength">قدرت سایه</string>
+    <string name="background">پس‌زمینه</string>
+    <string name="background_desc">رنگ جامد پشت زیرنویس</string>
+    <string name="background_color">رنگ پس‌زمینه</string>
+    <string name="background_opacity">شفافیت پس‌زمینه</string>
+    <string name="corner_radius">گردی گوشه‌ها</string>
+    <string name="text_alignment">تراز متن</string>
+    <string name="bottom_margin">فاصله از پایین</string>
+
+    <!-- Advanced section -->
+    <string name="advanced_rendering">رندرینگ پیشرفته</string>
+    <string name="ssa_ass_rendering">رندرینگ SSA / ASS</string>
+    <string name="ssa_ass_rendering_desc">اعمال استایل و موقعیت تعبیه‌شده</string>
+    <string name="improve_stroke">بهبود رندرینگ حاشیه</string>
+    <string name="improve_stroke_desc">حاشیه‌های واضح‌تر</string>
+    <string name="improve_complex_script">بهبود رندرینگ اسکریپت پیچیده</string>
+    <string name="improve_complex_script_desc">لیگاتورها و شکل‌گیری فارسی/عربی</string>
+    <string name="ignore_embedded_font">نادیده گرفتن فونت تعبیه‌شده</string>
+    <string name="ignore_embedded_font_desc">استفاده از فونت انتخاب‌شده کاربر</string>
+    <string name="fit_subtitle_into_video">جا دادن زیرنویس در ویدیو</string>
+    <string name="fit_subtitle_into_video_desc">مقیاس خودکار برای جا شدن در فریم</string>
+    <string name="fade_animation">انیمیشن محو شدن</string>
+    <string name="fade_animation_desc">محو شدن نرم بین زیرنویس‌ها</string>
+    <string name="subtitle_scale">مقیاس زیرنویس</string>
+    <string name="line_spacing">فاصله خطوط</string>
+    <string name="rtl_optimization">بهینه‌سازی رندرینگ RTL</string>
+    <string name="rtl_optimization_desc">چیدمان راست‌به‌چپ فارسی/عربی</string>
+    <string name="unicode_optimization">بهینه‌سازی رندرینگ یونیکد</string>
+    <string name="unicode_optimization_desc">بهینه‌سازی رندرینگ متن چنداسکریپتی</string>
+
+    <!-- Subtitle languages -->
+    <string name="lang_auto">خودکار</string>
+    <string name="lang_en">انگلیسی</string>
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_ar">عربی</string>
+    <string name="lang_tr">ترکی</string>
+    <string name="lang_es">اسپانیایی</string>
+    <string name="lang_ja">ژاپنی</string>
+    <string name="lang_ko">کره‌ای</string>
+
+    <!-- Subtitle positions -->
+    <string name="position_top">بالا</string>
+    <string name="position_center">وسط</string>
+    <string name="position_bottom">پایین</string>
+
+    <!-- Alignments -->
+    <string name="align_start">شروع</string>
+    <string name="align_center">وسط</string>
+    <string name="align_end">پایان</string>
+
+    <!-- Encodings -->
+    <string name="encoding_utf8">UTF-8 (پیشنهادی)</string>
+    <string name="encoding_utf16">UTF-16</string>
+    <string name="encoding_win1256">Windows-1256 (عربی/فارسی)</string>
+    <string name="encoding_win1252">Windows-1252 (غربی)</string>
+    <string name="encoding_iso8859">ISO-8859-1</string>
+    <string name="encoding_gbk">GBK (چینی ساده‌شده)</string>
+
+    <!-- Fonts -->
+    <string name="font_default">پیش‌فرض</string>
+    <string name="font_sans">Sans-serif</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_monospace">Monospace</string>
+    <string name="font_vazirmatn">وزیر (فارسی)</string>
+    <string name="font_compact">فشرده</string>
+
+    <!-- Filter chips -->
+    <string name="all_genres">همه ژانرها</string>
+    <string name="by_imdb">بر اساس IMDb</string>
+    <string name="by_imdb_alt">امتیاز IMDb</string>
+    <string name="by_year">بر اساس سال</string>
+    <string name="by_year_alt">سال انتشار</string>
+    <string name="default_filter">پیش‌فرض</string>
+
+    <!-- Search -->
+    <string name="search_hint">جستجوی فیلم، سریال، بازیگر…</string>
+    <string name="search_person_hint">جستجوی اسم…</string>
+    <string name="no_results">نتیجه‌ای یافت نشد</string>
+    <string name="recent_searches">جستجوهای اخیر</string>
+
+    <!-- Discovery -->
+    <string name="year_explorer">کاوش بر اساس سال</string>
+    <string name="actors">بازیگران</string>
+    <string name="directors">کارگردانان</string>
+    <string name="studios">استودیوها</string>
+    <string name="browse_by_actor">بر اساس بازیگر</string>
+    <string name="browse_by_director">بر اساس کارگردان</string>
+    <string name="browse_by_studio">بر اساس استودیو</string>
+    <string name="browse_by_decade">بر اساس دهه</string>
+    <string name="apply_filters">اعمال فیلترها</string>
+
+    <!-- Profile / Stats -->
+    <string name="avg_rating">میانگین امتیاز</string>
+    <string name="completed">تکمیل شده</string>
+    <string name="streak">پیاپی</string>
+
+    <!-- Favorites screen -->
+    <string name="create_new_playlist">ایجاد لیست جدید</string>
+    <string name="playlist_name">نام لیست</string>
+    <string name="new_playlist_name">نام لیست جدید</string>
+    <string name="create">ایجاد</string>
+    <string name="rename">تغییر نام</string>
+    <string name="rename_playlist">تغییر نام لیست</string>
+    <string name="delete">حذف</string>
+    <string name="delete_playlist">حذف لیست</string>
+    <string name="delete_all_favorites">حذف همه علاقه‌مندی‌ها</string>
+    <string name="select_playlists">انتخاب لیست‌ها</string>
+    <string name="move_to_playlist">انتقال به لیست</string>
+    <string name="remove">حذف</string>
+    <string name="remove_from_favorites">حذف از علاقه‌مندی‌ها</string>
+    <string name="clear_watch_history">پاک کردن تاریخچه تماشا</string>
+    <string name="clear_watch_history_message">کل تاریخچه تماشا پاک شود؟</string>
+
+    <!-- About screen -->
+    <string name="about_app">برنامه</string>
+    <string name="about_developer">توسعه‌دهنده</string>
+    <string name="about_developer_value">Farzad.Sh</string>
+    <string name="telegram_channel">کانال تلگرام</string>
+    <string name="telegram_url">https://t.me/pishimovie</string>
+    <string name="about_description">پیشی‌مووی یک پخش‌کننده و کتابخانه فیلم و سریال است. این برنامه با تمرکز بر تجربه‌ای روان، حرفه‌ای و سریع ساخته شده است.</string>
+
+    <!-- Theme -->
+    <string name="theme_section">پوسته</string>
+    <string name="theme_netflix_dark">Netflix Dark (Default)</string>
+    <string name="theme_pishi">Pishi Theme</string>
+
+    <!-- Language -->
+    <string name="language_setting">زبان برنامه</string>
+    <string name="lang_fa_display">فارسی</string>
+    <string name="lang_en_display">English</string>
+
+    <!-- Countries -->
+    <string name="country_turkish">ترکیه</string>
+    <string name="country_korean">کره جنوبی</string>
+    <string name="country_indian">هند</string>
+    <string name="country_spanish">اسپانیا</string>
+
+    <!-- Mood -->
+    <string name="mood_subtitle_picker">یک حالت انتخاب کنید و کشف کنید</string>
+
+    <!-- Subtitle download dialog -->
+    <string name="preferred_language">زبان موردنظر</string>
+    <string name="manual_search">جستجوی دستی (عنوان)</string>
+    <string name="auto_search">جستجوی خودکار</string>
+    <string name="searching_subtitles">در حال جستجوی زیرنویس برای %1$s…</string>
+    <string name="subtitle_download_auto_search_desc">جستجوی خودکار، زیرنویس‌های مطابق با عنوان ویدیو را پیدا می‌کند.</string>
+
+    <!-- UI Labels -->
+    <string name="movies_label">فیلم‌ها</string>
+    <string name="tv_series_label">سریال‌ها</string>
+    <string name="play_movie_quality">پخش %1$s</string>
+
+    <!-- Episodes -->
+    <string name="episode">قسمت</string>
+    <string name="episodes">قسمت‌ها</string>
+    <string name="season">فصل</string>
+    <string name="seasons">فصل‌ها</string>
+    <string name="select_source">انتخاب منبع</string>
+    <string name="select_quality">انتخاب کیفیت</string>
+    <string name="series_not_found">سریال یافت نشد</string>
+    <string name="choose_quality_to_play">کیفیت پخش را انتخاب کنید</string>
+    <string name="choose_quality_to_download">کیفیت دانلود را انتخاب کنید</string>
+    <string name="loading_seasons">در حال بارگذاری فصل‌ها…</string>
+    <string name="error_loading_seasons">خطا در بارگذاری فصل‌ها: %1$s</string>
+    <string name="no_seasons_available">فصلی موجود نیست</string>
+    <string name="watched">دیده شده</string>
+    <string name="qualities_available">%1$d کیفیت موجود است</string>
+    <string name="synopsis">خلاصه داستان</string>
+    <string name="no_watch_history">تاریخچه تماشا خالی است</string>
+    <string name="no_watch_history_desc">فیلم‌ها و سریال‌هایی که تماشا می‌کنید اینجا ظاهر می‌شوند</string>
+    <string name="percent_watched">%1$d%% تماشا شده</string>
+    <string name="completed_status">کامل شده</string>
+    <string name="your_profile">پروفایل شما</string>
+    <string name="total_watch_time">زمان کل تماشا</string>
+    <string name="hours">ساعت</string>
+    <string name="sessions">نشست</string>
+    <string name="no_titles_found_mood">عنوانی برای این حالت یافت نشد</string>
+    <string name="no_titles_found_collection">عنوانی در این مجموعه یافت نشد</string>
+    <string name="search_person_placeholder">جستجوی %1$s…</string>
+    <string name="search_for_person_desc">نامی را برای یافتن عناوین وارد کنید</string>
+    <string name="search_placeholder">جستجوی فیلم، سریال و…</string>
+    <string name="voice_search_soon">جستجوی صوتی به‌زودی…</string>
+    <string name="clear_filters">پاک کردن فیلترها</string>
+    <string name="sorted_by_year">مرتب‌سازی: سال</string>
+    <string name="sorted_by_imdb">مرتب‌سازی: امتیاز</string>
+    <string name="filters">فیلترها</string>
+    <string name="type">نوع</string>
+    <string name="all">همه</string>
+    <string name="min_rating">حداقل امتیاز: %1$d</string>
+    <string name="year_range">سال: %1$d – %2$d</string>
+    <string name="language_any">هر زبانی</string>
+    <string name="search_no_results_desc">کلمه کلیدی دیگری را امتحان کنید یا فیلترها را تغییر دهید</string>
+    <string name="recent_searches_title">جستجوهای اخیر</string>
+    <string name="trending_searches_title">جستجوهای ترند</string>
+    <string name="resume_percent">ادامه %1$d%%</string>
+    <string name="favorite_label">علاقه‌مندی</string>
+    <string name="saved_label">ذخیره شده</string>
+    <string name="actor_label">بازیگر</string>
+    <string name="director_label">کارگردان</string>
+    <string name="studio_label">استودیو</string>
+    <string name="sorted_by_year_desc">مرتب‌سازی بر اساس سال</string>
+    <string name="sorted_by_imdb_desc">مرتب‌سازی بر اساس امتیاز</string>
+    <string name="choose_browse">محتوایی را برای مشاهده انتخاب کنید</string>
+    <string name="loading_genres">در حال بارگذاری ژانرها…</string>
+    <string name="loading_countries">در حال بارگذاری کشورها…</string>
+    <string name="failed_load_content">خطا در بارگذاری محتوا</string>
+    <string name="failed_load_more">خطا در بارگذاری موارد بیشتر</string>
+    <string name="loading_movies">در حال بارگذاری فیلم‌ها…</string>
+    <string name="loading_series">در حال بارگذاری سریال‌ها…</string>
+    <string name="failed_load_movies">خطا در بارگذاری فیلم‌ها</string>
+    <string name="failed_load_series">خطا در بارگذاری سریال‌ها</string>
+    <string name="failed_load_country">خطا در بارگذاری کشور</string>
+    <string name="country_not_available">کشور در دسترس نیست</string>
+    <string name="version_label">نسخه %1$s (%2$d)</string>
+    <string name="sort_default">ترتیب: پیش‌فرض</string>
+    <string name="sort_year">ترتیب: سال</string>
+    <string name="sort_imdb">ترتیب: امتیاز</string>
+    <string name="no_favorites">هنوز علاقه‌مندی ندارید</string>
+    <string name="playlists_title">لیست‌ها</string>
+    <string name="delete_all_favorites_confirm">آیا از حذف همه علاقه‌مندی‌ها اطمینان دارید؟ این عمل غیرقابل بازگشت است.</string>
+    <string name="all_favorites_deleted">همه علاقه‌مندی‌ها حذف شدند</string>
+    <string name="playlist_created">لیست با موفقیت ایجاد شد</string>
+    <string name="playlist_exists">لیستی با این نام از قبل وجود دارد</string>
+    <string name="playlist_renamed">نام لیست تغییر کرد</string>
+    <string name="delete_playlist_confirm">آیا از حذف لیست \"%1$s\" اطمینان دارید؟</string>
+    <string name="playlist_deleted">لیست حذف شد</string>
+    <string name="remove_favorite_confirm">آیا از حذف \"%1$s\" از علاقه‌مندی‌ها اطمینان دارید؟</string>
+
+    <!-- Content Descriptions -->
+    <string name="create_playlist_cd">ایجاد لیست</string>
+    <string name="delete_all_cd">حذف همه</string>
+    <string name="group_options_cd">گزینه‌های لیست</string>
+    <string name="more_options_cd">گزینه‌های بیشتر</string>
+    <string name="clear_history_cd">پاک کردن تاریخچه</string>
+    <string name="open_cd">باز کردن</string>
+
+    <string name="theme_midnight_blue">آبی نیمه شب</string>
+    <string name="theme_cinema_gold">طلایی سینمایی</string>
+    <string name="theme_oled_black">مشکی OLED</string>
+    <!-- Expandable text / Genre filter / Player picker (fix pass 2026-10-17) -->
+    <string name="expandable_copied_toast">توضیحات در حافظه کپی شد</string>
+    <string name="expandable_copy_cd">کپی توضیحات</string>
+    <string name="expandable_show_more">نمایش بیشتر</string>
+    <string name="expandable_show_less">نمایش کمتر</string>
+    <string name="genre_filter_options_cd">گزینه‌های فیلتر</string>
+    <string name="genre_options_cd">گزینه‌های ژانر</string>
+    <string name="playerpicker_choose_player">یک پخش‌کننده برای تماشای «%1$s» انتخاب کنید</string>
+
+    <string name="search_voice_search">جستجوی صوتی</string>
+    <string name="movie_error_title">بارگذاری فیلم ناموفق بود</string>
+    <string name="movie_error_message">جزئیات فیلم بارگذاری نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="movie_related_error">عنوان‌های مرتبط بارگذاری نشدند.</string>
+
+    <!-- Fix pass 2026-10-17: i18n extraction (country/profile/settings/subtitle/collection) -->
+    <string name="country_filter_cd">پالایش</string>
+    <string name="country_rating_cd">امتیاز</string>
+    <string name="country_loading_content">در حال بارگذاری محتوا…</string>
+    <string name="profile_streak_days">%1$d روز</string>
+    <string name="settings_value">مقدار</string>
+    <string name="subtitle_reset_cd">بازنشانی</string>
+    <string name="subtitle_delete_preset_cd">حذف پروفایل</string>
+    <string name="subtitle_selected_cd">انتخاب‌شده</string>
+    <string name="subtitle_preview_line">This is a subtitle preview</string>
+    <string name="collection_not_found">مجموعه یافت نشد</string>
+    <string name="collection_title">مجموعه</string>
+
+</resources>

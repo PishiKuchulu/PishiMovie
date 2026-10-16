@@ -1,0 +1,480 @@
+<resources>
+    <string name="app_name">PishiMovie</string>
+
+    <!-- Navigation -->
+    <string name="home">Home</string>
+    <string name="movies">Movies</string>
+    <string name="series">Series</string>
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+    <string name="movie_details">Movie Details</string>
+    <string name="series_details">Series Details</string>
+    <string name="video_player">Player</string>
+    <string name="favorites">Favorites</string>
+    <string name="country">Country</string>
+    <string name="library">Library</string>
+    <string name="downloads">Downloads</string>
+    <string name="profile">Profile</string>
+    <string name="watch_history">Watch History</string>
+    <string name="more">More</string>
+    <string name="discover">Discover</string>
+    <string name="back">Back</string>
+
+    <!-- Home sections -->
+    <string name="continue_watching">Continue Watching</string>
+    <string name="recommended_for_you">Recommended for You</string>
+    <string name="recommended_subtitle">With PishiMovie AI</string>
+    <string name="trending">Trending</string>
+    <string name="trending_today">Trending Today</string>
+    <string name="top_imdb">Top IMDb</string>
+    <string name="new_releases">New Releases</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="featured_movies">Featured Movies</string>
+    <string name="featured_tv_series">Featured TV Series</string>
+    <string name="popular_movies">Popular Movies</string>
+    <string name="popular_tv_series">Popular TV Series</string>
+    <string name="popular_series">Popular Series</string>
+    <string name="anime_section">Featured Anime / Animation</string>
+    <string name="collections">Collections</string>
+    <string name="collections_subtitle">Featured Cinematic Universes</string>
+    <string name="genres">Genres</string>
+    <string name="countries">Countries</string>
+    <string name="favorite_genres">Favorite Genres</string>
+    <string name="because_you_watched">Because You Watched</string>
+    <string name="mood_mode">Mood Mode</string>
+    <string name="mood_subtitle">Pick your mood</string>
+    <string name="more_like_this">More Like This</string>
+    <string name="movie_universes">Movie Universes</string>
+    <string name="recently_watched">Recently Watched</string>
+    <string name="download_queue">Download Queue</string>
+    <string name="achievements">Achievements</string>
+    <string name="achievements_subtitle">%1$d of %2$d Unlocked</string>
+
+    <!-- Detail screen -->
+    <string name="play">Play</string>
+    <string name="trailer">Trailer</string>
+    <string name="add_to_favorites">Add to Favorites</string>
+    <string name="added_to_favorites">Added to favorites</string>
+    <string name="removed_from_favorites">Removed from favorites</string>
+    <string name="add_to_watchlist">Add to Watchlist</string>
+    <string name="added_to_watchlist">Added to watchlist</string>
+    <string name="removed_from_watchlist">Removed from watchlist</string>
+    <string name="watchlist">Watchlist</string>
+    <string name="share">Share</string>
+    <string name="download">Download &amp; Play</string>
+    <string name="resume">Resume</string>
+    <string name="resume_playback">Resume Playback</string>
+    <string name="resume_playback_subtitle">Continue where you left off</string>
+    <string name="statistics">Statistics</string>
+    <string name="history">History</string>
+    <string name="all_rights_reserved">All rights reserved.</string>
+
+    <!-- Movie metadata -->
+    <string name="imdb_rating">IMDb Rating</string>
+    <string name="user_rating">Your Rating</string>
+    <string name="release_year">Release Year</string>
+    <string name="runtime">Runtime</string>
+    <string name="language">Language</string>
+    <string name="language_original">Original Language</string>
+    <string name="country_label">Country</string>
+    <string name="genres_label">Genres</string>
+    <string name="cast">Cast</string>
+    <string name="director">Director</string>
+    <string name="studio">Studio</string>
+    <string name="not_available">—</string>
+    <string name="pishimovie_library">PishiMovie Library</string>
+
+    <!-- Player -->
+    <string name="play_with">Play with</string>
+    <string name="choose_player">Choose a player to watch %1$s</string>
+    <string name="internal_player">Internal Player</string>
+    <string name="vlc_player">VLC</string>
+    <string name="mx_player">MX Player</string>
+    <string name="km_player">KMPlayer</string>
+    <string name="browser_player">Browser</string>
+    <string name="other_players">Other Players</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="initializing_player">Initializing player…</string>
+    <string name="playback_error">Playback Error</string>
+    <string name="retry">Retry</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="skip_intro">Skip Intro</string>
+    <string name="tracks_quality">Audio, Subtitles &amp; Quality</string>
+    <string name="quality">Quality</string>
+    <string name="audio">Audio</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="no_subtitles">No subtitles available</string>
+    <string name="auto_quality">Auto</string>
+    <string name="highest_quality">Highest</string>
+    <string name="lowest_quality">Lowest</string>
+    <string name="off">Off</string>
+    <string name="lock">Lock</string>
+    <string name="unlock">Unlock</string>
+    <string name="pip">PiP</string>
+    <string name="no_video_player_installed">No video player installed</string>
+    <string name="title_copied">Title copied</string>
+
+    <!-- Download -->
+    <string name="download_options">Download Options</string>
+    <string name="download_with_browser">Download with Browser</string>
+    <string name="download_with_adm">Download with ADM</string>
+    <string name="download_play_options">Download &amp; Play Options</string>
+    <string name="download_play_options_desc">Choose how to handle this video</string>
+    <string name="play_options">Play Options</string>
+    <string name="open_in_vlc">Open in VLC</string>
+    <string name="open_in_mx_player">Open in MX Player</string>
+    <string name="open_in_km_player">Open in KMPlayer</string>
+    <string name="play_in_pishimovie">Play in PishiMovie</string>
+    <string name="copy_link">Copy Link</string>
+    <string name="choose_action_for_image">Choose an action for this image</string>
+    <string name="image_options">Image Options</string>
+    <string name="copy_image_url">Copy Image URL</string>
+
+    <!-- Settings -->
+    <string name="player_section">Player</string>
+    <string name="default_player">Default Player</string>
+    <string name="playback_section">Playback</string>
+    <string name="seek_interval">Seek Interval</string>
+    <string name="playback_speed">Playback Speed</string>
+    <string name="storage_section">Storage</string>
+    <string name="cache_management">Cache Management</string>
+    <string name="cache_subtitle">Images &amp; API Cache: %1$s</string>
+    <string name="cache_cleared">Cache cleared</string>
+    <string name="error_clearing_cache">Error clearing cache</string>
+    <string name="series_episodes_cache">Series Episodes Cache</string>
+    <string name="series_episodes_size">Size: %1$s</string>
+    <string name="empty">Empty</string>
+    <string name="about_section">About</string>
+    <string name="about_pishimovie">About PishiMovie</string>
+    <string name="about_subtitle">Learn more about the app</string>
+    <string name="reset_to_defaults">Reset to Defaults</string>
+    <string name="reset_subtitle">Reset subtitle and playback settings</string>
+    <string name="reset_settings">Reset Settings</string>
+    <string name="reset_dialog_message">Reset subtitle and playback settings to defaults?</string>
+    <string name="reset">Reset</string>
+    <string name="clear_watched_episodes">Clear Watched Episodes</string>
+    <string name="clear_watched_episodes_message">Clear all watched episodes history? This cannot be undone.</string>
+    <string name="clear_all">Clear All</string>
+    <string name="clear">Clear</string>
+    <string name="watched_episodes_cleared">Watched episodes history cleared</string>
+    <string name="error_clearing_cache_alt">Error clearing cache</string>
+    <string name="built_in">Built-in</string>
+
+    <!-- Subtitle settings -->
+    <string name="subtitle_settings">Subtitle Settings</string>
+    <string name="subtitle_settings_shortcut_subtitle">Font, color, border, shadow, presets, per-video</string>
+    <string name="subtitle_settings_basic">Basic</string>
+    <string name="subtitle_settings_appearance">Appearance</string>
+    <string name="subtitle_settings_advanced">Advanced</string>
+    <string name="subtitle_settings_preview">Live Preview</string>
+    <string name="subtitle_settings_profiles">Profiles</string>
+    <string name="subtitle_settings_per_video">Per-video Settings</string>
+    <string name="save_current">Save Current</string>
+    <string name="save_current_as_preset">Save as Profile</string>
+    <string name="preset_name">Profile Name</string>
+    <string name="save">Save</string>
+    <string name="preset_saved">Profile saved: %1$s</string>
+    <string name="reset_to_defaults_toast">Reset to defaults</string>
+
+    <!-- Basic section -->
+    <string name="subtitles_enabled">Subtitles Enabled</string>
+    <string name="subtitles_enabled_desc">Show subtitles during playback</string>
+    <string name="subtitle_language">Subtitle Language</string>
+    <string name="subtitle_download">Download Subtitle</string>
+    <string name="subtitle_download_desc">Auto-search, manual search, sync</string>
+    <string name="load_local_subtitle">Load Local Subtitle</string>
+    <string name="load_local_subtitle_desc">.srt .ass .ssa .sub .vtt</string>
+    <string name="local_subtitle_attached">Local subtitle attached</string>
+    <string name="local_subtitle_attached_toast">Local subtitle attached</string>
+    <string name="local_subtitle_apply_per_video">Local subtitle loaded (applies per video)</string>
+    <string name="character_encoding">Character Encoding</string>
+    <string name="font_size">Font Size</string>
+    <string name="subtitle_delay">Subtitle Delay</string>
+    <string name="subtitle_position">Subtitle Position</string>
+    <string name="use_global">Use Global</string>
+    <string name="per_video_override_active">Per-video override active</string>
+    <string name="per_video_mode">Per-video Mode</string>
+    <string name="per_video_adjustments">Per-video Adjustments</string>
+    <string name="per_video_active_delay">Per-video delay/size/language applied</string>
+    <string name="per_video_active_no_overrides">Adjustments apply only to this video</string>
+    <string name="per_video_cleared">Per-video overrides cleared</string>
+
+    <!-- Appearance section -->
+    <string name="font_family">Font Family</string>
+    <string name="font_scale">Font Scale</string>
+    <string name="font_color">Font Color</string>
+    <string name="bold">Bold</string>
+    <string name="italic">Italic</string>
+    <string name="border_color">Border Color</string>
+    <string name="border_thickness">Border Thickness</string>
+    <string name="drop_shadow">Shadow</string>
+    <string name="drop_shadow_desc">Soft shadow under text</string>
+    <string name="shadow_strength">Shadow Strength</string>
+    <string name="background">Background</string>
+    <string name="background_desc">Solid color behind subtitles</string>
+    <string name="background_color">Background Color</string>
+    <string name="background_opacity">Background Opacity</string>
+    <string name="corner_radius">Corner Radius</string>
+    <string name="text_alignment">Text Alignment</string>
+    <string name="bottom_margin">Bottom Margin</string>
+
+    <!-- Advanced section -->
+    <string name="advanced_rendering">Advanced Rendering</string>
+    <string name="ssa_ass_rendering">SSA / ASS Rendering</string>
+    <string name="ssa_ass_rendering_desc">Apply embedded styles and positioning</string>
+    <string name="improve_stroke">Improve Stroke</string>
+    <string name="improve_stroke_desc">Sharper outline rendering</string>
+    <string name="improve_complex_script">Improve Complex Script</string>
+    <string name="improve_complex_script_desc">Persian/Arabic ligatures and shaping</string>
+    <string name="ignore_embedded_font">Ignore Embedded Font</string>
+    <string name="ignore_embedded_font_desc">Use user-selected font family</string>
+    <string name="fit_subtitle_into_video">Fit Subtitle Into Video</string>
+    <string name="fit_subtitle_into_video_desc">Auto-scale to fit within frame</string>
+    <string name="fade_animation">Fade Animation</string>
+    <string name="fade_animation_desc">Smooth fade between subtitles</string>
+    <string name="subtitle_scale">Subtitle Scale</string>
+    <string name="line_spacing">Line Spacing</string>
+    <string name="rtl_optimization">RTL Optimization</string>
+    <string name="rtl_optimization_desc">Persian/Arabic right-to-left layout</string>
+    <string name="unicode_optimization">Unicode Optimization</string>
+    <string name="unicode_optimization_desc">Optimize multi-script text rendering</string>
+
+    <!-- Subtitle languages -->
+    <string name="lang_auto">Auto</string>
+    <string name="lang_en">English</string>
+    <string name="lang_fa">Persian</string>
+    <string name="lang_ar">Arabic</string>
+    <string name="lang_tr">Turkish</string>
+    <string name="lang_es">Spanish</string>
+    <string name="lang_ja">Japanese</string>
+    <string name="lang_ko">Korean</string>
+
+    <!-- Subtitle positions -->
+    <string name="position_top">Top</string>
+    <string name="position_center">Center</string>
+    <string name="position_bottom">Bottom</string>
+
+    <!-- Alignments -->
+    <string name="align_start">Start</string>
+    <string name="align_center">Center</string>
+    <string name="align_end">End</string>
+
+    <!-- Encodings -->
+    <string name="encoding_utf8">UTF-8 (Recommended)</string>
+    <string name="encoding_utf16">UTF-16</string>
+    <string name="encoding_win1256">Windows-1256 (Arabic/Persian)</string>
+    <string name="encoding_win1252">Windows-1252 (Western)</string>
+    <string name="encoding_iso8859">ISO-8859-1</string>
+    <string name="encoding_gbk">GBK (Simplified Chinese)</string>
+
+    <!-- Fonts -->
+    <string name="font_default">Default</string>
+    <string name="font_sans">Sans-serif</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_monospace">Monospace</string>
+    <string name="font_vazirmatn">Vazir (Persian)</string>
+    <string name="font_compact">Compact</string>
+
+    <!-- Filter chips -->
+    <string name="all_genres">All Genres</string>
+    <string name="by_imdb">By IMDb</string>
+    <string name="by_imdb_alt">IMDb Rating</string>
+    <string name="by_year">By Year</string>
+    <string name="by_year_alt">Release Year</string>
+    <string name="default_filter">Default</string>
+
+    <!-- Search -->
+    <string name="search_hint">Search movies, series, actors…</string>
+    <string name="search_person_hint">Search name…</string>
+    <string name="no_results">No results found</string>
+    <string name="recent_searches">Recent Searches</string>
+
+    <!-- Discovery -->
+    <string name="year_explorer">Year Explorer</string>
+    <string name="actors">Actors</string>
+    <string name="directors">Directors</string>
+    <string name="studios">Studios</string>
+    <string name="browse_by_actor">Browse by actor</string>
+    <string name="browse_by_director">Browse by director</string>
+    <string name="browse_by_studio">Browse by studio</string>
+    <string name="browse_by_decade">Browse by decade</string>
+    <string name="apply_filters">Apply Filters</string>
+
+    <!-- Profile / Stats -->
+    <string name="avg_rating">Avg Rating</string>
+    <string name="completed">Completed</string>
+    <string name="streak">Streak</string>
+
+    <!-- Favorites screen -->
+    <string name="create_new_playlist">Create New Playlist</string>
+    <string name="playlist_name">Playlist Name</string>
+    <string name="new_playlist_name">New Playlist Name</string>
+    <string name="create">Create</string>
+    <string name="rename">Rename</string>
+    <string name="rename_playlist">Rename Playlist</string>
+    <string name="delete">Delete</string>
+    <string name="delete_playlist">Delete Playlist</string>
+    <string name="delete_all_favorites">Delete All Favorites</string>
+    <string name="select_playlists">Select Playlists</string>
+    <string name="move_to_playlist">Move to Playlist</string>
+    <string name="remove">Remove</string>
+    <string name="remove_from_favorites">Remove from Favorites</string>
+    <string name="clear_watch_history">Clear Watch History</string>
+    <string name="clear_watch_history_message">Clear entire watch history?</string>
+
+    <!-- About screen -->
+    <string name="about_app">App</string>
+    <string name="about_developer">Developer</string>
+    <string name="about_developer_value">Farzad.Sh</string>
+    <string name="telegram_channel">Telegram Channel</string>
+    <string name="telegram_url">https://t.me/pishimovie</string>
+    <string name="about_description">PishiMovie is a professional movie and series library and player. Built with focus on smooth, high-quality and fast experience.</string>
+
+    <!-- Theme -->
+    <string name="theme_section">Theme</string>
+    <string name="theme_netflix_dark">Netflix Dark (Default)</string>
+    <string name="theme_pishi">Pishi Theme</string>
+
+    <!-- Language -->
+    <string name="language_setting">App Language</string>
+    <string name="lang_fa_display">فارسی</string>
+    <string name="lang_en_display">English</string>
+
+    <!-- Countries -->
+    <string name="country_turkish">Turkish</string>
+    <string name="country_korean">Korean</string>
+    <string name="country_indian">Indian</string>
+    <string name="country_spanish">Spanish</string>
+
+    <!-- Mood -->
+    <string name="mood_subtitle_picker">Pick a mood and discover</string>
+
+    <!-- Subtitle download dialog -->
+    <string name="preferred_language">Preferred Language</string>
+    <string name="manual_search">Manual Search (Title)</string>
+    <string name="auto_search">Auto Search</string>
+    <string name="searching_subtitles">Searching subtitles for %1$s…</string>
+    <string name="subtitle_download_auto_search_desc">Auto-search will look up subtitles matching the video title.</string>
+
+    <!-- UI Labels -->
+    <string name="movies_label">Movies</string>
+    <string name="tv_series_label">TV Series</string>
+    <string name="play_movie_quality">Play %1$s</string>
+
+    <!-- Episodes -->
+    <string name="episode">Episode</string>
+    <string name="episodes">Episodes</string>
+    <string name="season">Season</string>
+    <string name="seasons">Seasons</string>
+    <string name="select_source">Select Source</string>
+    <string name="select_quality">Select Quality</string>
+    <string name="series_not_found">Series not found</string>
+    <string name="choose_quality_to_play">Choose quality to play</string>
+    <string name="choose_quality_to_download">Choose quality to download</string>
+    <string name="loading_seasons">Loading seasons…</string>
+    <string name="error_loading_seasons">Error loading seasons: %1$s</string>
+    <string name="no_seasons_available">No seasons available</string>
+    <string name="watched">Watched</string>
+    <string name="qualities_available">%1$d qualities available</string>
+    <string name="synopsis">Synopsis</string>
+    <string name="no_watch_history">No watch history yet</string>
+    <string name="no_watch_history_desc">Movies and episodes you watch will appear here</string>
+    <string name="percent_watched">%1$d%% watched</string>
+    <string name="completed_status">Completed</string>
+    <string name="your_profile">Your Profile</string>
+    <string name="total_watch_time">Total Watch Time</string>
+    <string name="hours">hours</string>
+    <string name="sessions">sessions</string>
+    <string name="no_titles_found_mood">No titles found for this mood</string>
+    <string name="no_titles_found_collection">No titles found in this collection</string>
+    <string name="search_person_placeholder">Search %1$s…</string>
+    <string name="search_for_person_desc">Enter a name to find titles</string>
+    <string name="search_placeholder">Search movies, series…</string>
+    <string name="voice_search_soon">Voice search coming soon…</string>
+    <string name="clear_filters">Clear Filters</string>
+    <string name="sorted_by_year">Sorted by Year</string>
+    <string name="sorted_by_imdb">Sorted by IMDb</string>
+    <string name="filters">Filters</string>
+    <string name="type">Type</string>
+    <string name="all">All</string>
+    <string name="min_rating">Minimum Rating: %1$d</string>
+    <string name="year_range">Year: %1$d – %2$d</string>
+    <string name="language_any">Any Language</string>
+    <string name="search_no_results_desc">Try a different keyword or adjust your filters</string>
+    <string name="recent_searches_title">Recent Searches</string>
+    <string name="trending_searches_title">Trending Searches</string>
+    <string name="resume_percent">Resume %1$d%%</string>
+    <string name="favorite_label">Favorite</string>
+    <string name="saved_label">Saved</string>
+    <string name="actor_label">Actor</string>
+    <string name="director_label">Director</string>
+    <string name="studio_label">Studio</string>
+    <string name="sorted_by_year_desc">Sorted by Year</string>
+    <string name="sorted_by_imdb_desc">Sorted by IMDb</string>
+    <string name="choose_browse">Choose what to browse</string>
+    <string name="loading_genres">Loading genres…</string>
+    <string name="loading_countries">Loading countries…</string>
+    <string name="failed_load_content">Failed to load content</string>
+    <string name="failed_load_more">Failed to load more content</string>
+    <string name="loading_movies">Loading Movies…</string>
+    <string name="loading_series">Loading Series…</string>
+    <string name="failed_load_movies">Failed to load movies</string>
+    <string name="failed_load_series">Failed to load series</string>
+    <string name="failed_load_country">Failed to load country</string>
+    <string name="country_not_available">Country not available</string>
+    <string name="version_label">Version %1$s (%2$d)</string>
+    <string name="sort_default">Sort: Default</string>
+    <string name="sort_year">Sort: Year</string>
+    <string name="sort_imdb">Sort: IMDb</string>
+    <string name="no_favorites">No favorites yet</string>
+    <string name="playlists_title">Playlists</string>
+    <string name="delete_all_favorites_confirm">Are you sure you want to delete all favorites? This cannot be undone.</string>
+    <string name="all_favorites_deleted">All favorites deleted</string>
+    <string name="playlist_created">Playlist created successfully</string>
+    <string name="playlist_exists">A playlist with this name already exists</string>
+    <string name="playlist_renamed">Playlist renamed successfully</string>
+    <string name="delete_playlist_confirm">Are you sure you want to delete the playlist \"%1$s\"?</string>
+    <string name="playlist_deleted">Playlist deleted successfully</string>
+    <string name="remove_favorite_confirm">Are you sure you want to remove \"%1$s\" from your favorites?</string>
+
+    <!-- Content Descriptions -->
+    <string name="create_playlist_cd">Create Playlist</string>
+    <string name="delete_all_cd">Delete All</string>
+    <string name="group_options_cd">Playlist Options</string>
+    <string name="more_options_cd">More Options</string>
+    <string name="clear_history_cd">Clear History</string>
+    <string name="open_cd">Open</string>
+
+    <string name="theme_midnight_blue">Midnight Blue</string>
+    <string name="theme_cinema_gold">Cinema Gold</string>
+    <string name="theme_oled_black">OLED Black</string>
+    <!-- Expandable text / Genre filter / Player picker (fix pass 2026-10-17) -->
+    <string name="expandable_copied_toast">Description copied to clipboard</string>
+    <string name="expandable_copy_cd">Copy description</string>
+    <string name="expandable_show_more">Show More</string>
+    <string name="expandable_show_less">Show Less</string>
+    <string name="genre_filter_options_cd">Filter options</string>
+    <string name="genre_options_cd">Genre options</string>
+    <string name="playerpicker_choose_player">Choose a player to watch \"%1$s\"</string>
+
+    <string name="search_voice_search">Voice Search</string>
+    <string name="movie_error_title">Couldn't load movie</string>
+    <string name="movie_error_message">The movie details couldn't be loaded. Check your connection and try again.</string>
+    <string name="movie_related_error">Couldn't load related titles.</string>
+
+    <!-- Fix pass 2026-10-17: i18n extraction (country/profile/settings/subtitle/collection) -->
+    <string name="country_filter_cd">Filter</string>
+    <string name="country_rating_cd">Rating</string>
+    <string name="country_loading_content">Loading content…</string>
+    <string name="profile_streak_days">%1$d days</string>
+    <string name="settings_value">Value</string>
+    <string name="subtitle_reset_cd">Reset</string>
+    <string name="subtitle_delete_preset_cd">Delete preset</string>
+    <string name="subtitle_selected_cd">Selected</string>
+    <string name="subtitle_preview_line">This is a subtitle preview</string>
+    <string name="collection_not_found">Collection not found</string>
+    <string name="collection_title">Collection</string>
+
+</resources>

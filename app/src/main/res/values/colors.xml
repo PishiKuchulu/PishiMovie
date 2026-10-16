@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PishiMovie premium brand palette (Phase 10): Extracted from new Icon -->
+    <color name="brand_red">#D62027</color>
+    <color name="brand_red_dark">#B51B21</color>
+    <color name="brand_red_light">#E54A4F</color>
+    <color name="brand_white">#FDF6E3</color>
+    <color name="amoled_black">#000000</color>
+    <color name="amoled_surface">#0C1417</color>
+    <color name="amoled_surface_variant">#162024</color>
+    <color name="amoled_elevated">#1E2A2E</color>
+
+    <color name="pishi_primary">#E88224</color>
+    <color name="pishi_secondary">#00B5E2</color>
+    <color name="pishi_background">#244855</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

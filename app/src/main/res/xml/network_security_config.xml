@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PishiMovie network security config.
+
+  Cleartext (HTTP) is DISABLED by default. It is explicitly allowed only for
+  the three known backend hosts, whose streaming endpoints may serve HTTP
+  source URLs. Every other host — including the dynamic CDN domains returned
+  by the API at runtime — is HTTPS-only: playback fails closed with a visible
+  error instead of silently leaking traffic over cleartext.
+
+  NOTE (pinning): certificate pinning for the three backend hosts is
+  intentionally NOT enabled yet. A pin-set was specified for this release,
+  but the supplied pin value was verified to be the SHA-256 of the empty
+  string (a placeholder, not a real SPKI pin) — installing it would reject
+  the backends' real certificates and break all API calls. To enable pinning,
+  obtain the real SPKI pins on a machine with direct TLS access, e.g.:
+
+      openssl s_client -connect server-hi-speed-iran.info:443 -servername server-hi-speed-iran.info \
+        | openssl x509 -pubkey -noout \
+        | openssl pkey -pubin -outform der \
+        | openssl dgst -sha256 -binary | openssl base64
+
+  then add inside the <domain-config> below:
+
+      <pin-set expiration="2028-01-01">
+          <pin digest="SHA-256">BASE64-SPKI-PIN-HERE</pin>
+      </pin-set>
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Known backend hosts only: API + helper servers. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">server-hi-speed-iran.info</domain>
+        <domain includeSubdomains="true">hostinnegar.com</domain>
+        <domain includeSubdomains="true">windowsdiba.info</domain>
+    </domain-config>
+
+    <!-- Debug overrides: trust user CAs (e.g. Charles / mitmproxy) for
+         development only. Has no effect in release builds. -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

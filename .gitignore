@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Local configuration
+local.properties
+key.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# NDK
+.externalNativeBuild/
+.cxx/
+
+# Misc
+captures/
+
+# AI/build working artifacts (not source)
+.artifacts/
+.kotlin/
+app/release/
