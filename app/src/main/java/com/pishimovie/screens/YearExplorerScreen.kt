@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.pishimovie.R
 import com.pishimovie.data.repository.DiscoveryRepository
 import com.pishimovie.ui.theme.LocalPishiDimens
 import com.pishimovie.ui.theme.ShapeCardDefault

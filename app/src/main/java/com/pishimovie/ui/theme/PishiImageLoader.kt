@@ -41,7 +41,10 @@ object PishiImageLoader : ImageLoaderFactory {
                     .build()
             }
             .memoryCache {
-                MemoryCache.Builder()
+                // NOTE: Coil 2.7.0's MemoryCache.Builder REQUIRES a Context
+                // (the no-arg form only exists in Coil 3) — verified against
+                // the real compiler; do not "fix" this to no-arg.
+                MemoryCache.Builder(PishiContextHolder.context)
                     .maxSizePercent(MEMORY_CACHE_FRACTION)
                     .build()
             }
