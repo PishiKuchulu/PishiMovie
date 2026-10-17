@@ -29,12 +29,8 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Rename APK
-        run: |
-          echo "=== outputs tree ==="
-          find app/build/outputs -type f | head -30
-          echo "=== debug dir listing ==="
-          ls -la app/build/outputs/apk/debug/ || echo "NO DEBUG DIR"
-          mv app/build/outputs/apk/debug/*.apk app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
+        # The project builds per-ABI APK splits; the universal APK runs on all devices.
+        run: mv app/build/outputs/apk/debug/app-universal-debug.apk app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
 
       - name: Upload debug APK (artifact)
         uses: actions/upload-artifact@v4
