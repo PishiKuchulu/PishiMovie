@@ -47,4 +47,4 @@ jobs:
           body: |
             آخرین بیلد خودکار از برنچ `main` (نسخه 1.2.2).
             Latest automatic debug build from the `main` branch.
-          files: app/build/outputs/apk/debug/*.apk
+          files: app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
