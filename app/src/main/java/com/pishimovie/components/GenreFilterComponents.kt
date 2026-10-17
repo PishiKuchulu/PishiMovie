@@ -54,12 +54,14 @@ fun GenreFilterSection(
         ) {
             // Filter type selector on the left
             FilterTypeSelector(
+                modifier = Modifier.weight(1f),
                 selectedFilterType = selectedFilterType,
                 onFilterTypeSelected = onFilterTypeSelected
             )
             
             // Genre selector on the right
             GenreSelector(
+                modifier = Modifier.weight(1f),
                 genres = genres,
                 selectedGenreId = selectedGenreId,
                 onGenreSelected = onGenreSelected
@@ -70,6 +72,7 @@ fun GenreFilterSection(
 
 @Composable
 fun FilterTypeSelector(
+    modifier: Modifier = Modifier,
     selectedFilterType: FilterType,
     onFilterTypeSelected: (FilterType) -> Unit
 ) {
@@ -77,8 +80,7 @@ fun FilterTypeSelector(
     
     Card(
         onClick = { expanded = true },
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .height(36.dp),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
@@ -145,6 +147,7 @@ fun FilterTypeSelector(
 
 @Composable
 fun GenreSelector(
+    modifier: Modifier = Modifier,
     genres: List<Genre>,
     selectedGenreId: Int,
     onGenreSelected: (Int) -> Unit
@@ -160,8 +163,7 @@ fun GenreSelector(
     
     Card(
         onClick = { expanded = true },
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .height(36.dp),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
