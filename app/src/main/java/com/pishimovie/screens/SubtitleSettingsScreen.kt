@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -99,6 +101,7 @@ import com.pishimovie.data.model.SubtitlePerVideo
 import com.pishimovie.data.model.SubtitlePosition
 import com.pishimovie.data.model.SubtitleProfile
 import com.pishimovie.data.model.SubtitleSettings
+import com.pishimovie.ui.theme.rememberReducedMotion
 import com.pishimovie.utils.SubtitleSettingsStorage
 
 /**
@@ -146,6 +149,9 @@ fun SubtitleSettingsScreen(
     var advancedExpanded by remember { mutableStateOf(false) }
     var showSavePresetDialog by remember { mutableStateOf(false) }
     var showDownloadDialog by remember { mutableStateOf(false) }
+    // TV / reduced motion: the advanced section appears instantly instead of
+    // expand/shrink animating (see TvMotion).
+    val reducedMotion = rememberReducedMotion()
 
     // The "effective" settings used for the live preview: global + per-video overrides
     val previewSettings = remember(globalSettings, perVideo) {
@@ -355,8 +361,10 @@ fun SubtitleSettingsScreen(
         item(key = "advanced_card") {
             AnimatedVisibility(
                 visible = advancedExpanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = if (reducedMotion) EnterTransition.None
+                else fadeIn() + expandVertically(),
+                exit = if (reducedMotion) ExitTransition.None
+                else fadeOut() + shrinkVertically(),
             ) {
                 AdvancedSection(
                     settings = globalSettings,

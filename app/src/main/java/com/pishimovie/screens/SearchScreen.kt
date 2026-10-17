@@ -3,6 +3,8 @@ package com.pishimovie.screens
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -90,6 +92,7 @@ import com.pishimovie.ui.components.PishiRatingPill
 import com.pishimovie.ui.components.PishiShimmerBox
 import com.pishimovie.ui.search.SearchViewModel
 import com.pishimovie.ui.theme.LocalPishiDimens
+import com.pishimovie.ui.theme.rememberReducedMotion
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
 
@@ -119,6 +122,9 @@ fun SearchScreen(
 
     val uiState = viewModel.uiState.collectAsState().value
     var showFilterSheet by remember { mutableStateOf(false) }
+    // TV / reduced motion: the suggestions dropdown appears instantly
+    // instead of expand/shrink animating (see TvMotion).
+    val reducedMotion = rememberReducedMotion()
 
     LaunchedEffect(Unit) {
         viewModel.initialize(context)
@@ -289,8 +295,10 @@ fun SearchScreen(
             // ── Live suggestions dropdown ───────────────────────────────
             AnimatedVisibility(
                 visible = uiState.suggestions.isNotEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = if (reducedMotion) EnterTransition.None
+                else fadeIn() + expandVertically(),
+                exit = if (reducedMotion) ExitTransition.None
+                else fadeOut() + shrinkVertically(),
             ) {
                 Column(
                     modifier = Modifier

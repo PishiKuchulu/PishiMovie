@@ -90,6 +90,8 @@ import com.pishimovie.ui.theme.CinematicPalette
 import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.extractCinematicPalette
 import com.pishimovie.ui.theme.ShapeCardDefault
+import com.pishimovie.ui.theme.tvSpringOrSnap
+import com.pishimovie.ui.theme.tvTween
 import com.pishimovie.utils.DownloadUtils
 import com.pishimovie.utils.StorageUtils
 import kotlinx.coroutines.CancellationException
@@ -460,7 +462,8 @@ fun SingleMovieScreen(
         // Top bar — fades in as the user scrolls past the header
         val topBarAlpha by animateFloatAsState(
             targetValue = if (parallax > 0.5f) 1f else 0f,
-            animationSpec = PishiMotion.tweenMedium(),
+            // TV: instant instead of a 300ms fade (see TvMotion).
+            animationSpec = tvTween(PishiMotion.DurationMedium),
             label = "top_bar_alpha",
         )
         if (topBarAlpha > 0f) {
@@ -683,7 +686,8 @@ private fun ActionChip(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = PishiMotion.springPress(),
+        // TV: press feedback snaps instead of spring-bouncing (see TvMotion).
+        animationSpec = tvSpringOrSnap(),
         label = "chip_scale",
     )
     Column(

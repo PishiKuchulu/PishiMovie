@@ -3,7 +3,6 @@ package com.pishimovie.navigation
 import androidx.compose.foundation.Image
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +35,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.pishimovie.R
+import com.pishimovie.ui.theme.tvTween
 
 @Composable
 fun SidebarNavigation(navController: NavController) {
@@ -73,7 +73,8 @@ fun SidebarNavigation(navController: NavController) {
                     }
                     val scale by animateFloatAsState(
                         targetValue = if (isSelected) 1.1f else 1f,
-                        animationSpec = tween(durationMillis = 200),
+                        // TV: selection feedback snaps instead of tweening (see TvMotion).
+                        animationSpec = tvTween(200),
                         label = "scale"
                     )
                     
@@ -82,7 +83,8 @@ fun SidebarNavigation(navController: NavController) {
                             androidx.compose.material3.MaterialTheme.colorScheme.primary 
                         else 
                             androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                        animationSpec = tween(durationMillis = 200),
+                        // TV: instant color switch (see TvMotion).
+                        animationSpec = tvTween(200),
                         label = "iconColor"
                     )
                     
@@ -91,7 +93,8 @@ fun SidebarNavigation(navController: NavController) {
                             androidx.compose.material3.MaterialTheme.colorScheme.primary 
                         else 
                             androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                        animationSpec = tween(durationMillis = 200),
+                        // TV: instant color switch (see TvMotion).
+                        animationSpec = tvTween(200),
                         label = "textColor"
                     )
 

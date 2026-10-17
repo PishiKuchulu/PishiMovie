@@ -1,15 +1,9 @@
 package com.pishimovie.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -71,6 +65,8 @@ import com.pishimovie.components.GenreFilterSection
 import com.pishimovie.data.model.Genre
 import com.pishimovie.data.model.Movie
 import com.pishimovie.ui.movies.MoviesViewModel
+import com.pishimovie.ui.theme.rememberReducedMotion
+import com.pishimovie.ui.theme.rememberShimmerSweepOrStatic
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
 
@@ -188,14 +184,9 @@ fun ShimmerMovieItem(
     shimmerColor: Color,
     shimmerColorShade: Color
 ) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
-        initialValue = -1000f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200)
-        ), label = "shimmer_translate"
-    )
+    // TV / reduced motion: static shimmer — no infinite transition is
+    // composed at all (see TvMotion).
+    val translateAnim = rememberShimmerSweepOrStatic()
     
     val brush = Brush.linearGradient(
         colors = listOf(
@@ -360,6 +351,19 @@ fun MovieGrid(
 
 @Composable
 fun ModernCircularProgressIndicator() {
+    // TV / reduced motion: static loading ring — no infinite progress or
+    // rotation animation is composed at all (see TvMotion).
+    if (rememberReducedMotion()) {
+        CircularProgressIndicator(
+            progress = 0.65f,
+            modifier = Modifier.size(48.dp),
+            strokeWidth = 4.dp,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary
+        )
+        return
+    }
+
     val transition = rememberInfiniteTransition(label = "progress")
     val progress by transition.animateFloat(
         initialValue = 0f,

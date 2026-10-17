@@ -8,6 +8,7 @@ import coil.Coil
 import com.pishimovie.data.cache.ApiResponseCache
 import com.pishimovie.data.cache.MetadataCache
 import com.pishimovie.download.DownloadManager
+import com.pishimovie.utils.DeviceUtils
 
 /**
  * PishiMovie performance + lifecycle utilities (Phase 6).
@@ -17,6 +18,9 @@ import com.pishimovie.download.DownloadManager
  *  - Memory pressure handling (trim caches on TRIM_MEMORY)
  *  - Periodic cache cleanup
  *  - Storage usage reporting
+ *  - TV-aware tuning (Android TV devices share 1–2 GB RAM with the system,
+ *    so they get a smaller bitmap pool, no image crossfade, and more
+ *    aggressive cache eviction — see [isLowEndTv])
  */
 object PerformanceOptimizer {
 
@@ -85,8 +89,16 @@ object PerformanceOptimizer {
                         clearMemoryCaches(appContext)
                     }
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> {
-                        PLog.d(tag, "Trim memory (running moderate) — purging expired entries")
-                        ApiResponseCache.get(appContext).cleanupExpired()
+                        // On low-end TVs the system kills backgrounded apps
+                        // aggressively and the bitmap pool dominates memory —
+                        // clear it one level earlier than on phones.
+                        if (isLowEndTv(appContext)) {
+                            PLog.d(tag, "Trim memory (running moderate, low-end TV) — clearing memory caches")
+                            clearMemoryCaches(appContext)
+                        } else {
+                            PLog.d(tag, "Trim memory (running moderate) — purging expired entries")
+                            ApiResponseCache.get(appContext).cleanupExpired()
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -158,4 +170,42 @@ object PerformanceOptimizer {
         am.getMemoryInfo(info)
         return info.availMem / (1024f * 1024f)
     }
+
+    /**
+     * True when running on an Android TV device.
+     *
+     * Thin wrapper over [DeviceUtils.isTv] so engine code has a single
+     * entry point for TV-specific tuning.
+     */
+    fun isTv(context: Context): Boolean =
+        DeviceUtils.isTv(context.applicationContext)
+
+    /**
+     * True on TV devices with constrained RAM. TV boxes/sticks often share
+     * 1–2 GB with the system, so these devices get the most conservative
+     * tuning: smaller bitmap pool, no crossfade, and memory-cache eviction
+     * at lower [onTrimMemory] pressure levels.
+     */
+    fun isLowEndTv(context: Context): Boolean {
+        val appContext = context.applicationContext
+        if (!DeviceUtils.isTv(appContext)) return false
+        return try {
+            val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            if (am.isLowRamDevice) return true
+            val info = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(info)
+            info.totalMem < 2L * 1024 * 1024 * 1024
+        } catch (_: Exception) {
+            // If we can't tell, assume constrained — safer on TV.
+            true
+        }
+    }
+
+    /**
+     * Bitmap memory-cache fraction for Coil: 15% on TV (RAM is shared with
+     * the system and the TV UI keeps fewer screens alive), 20% on
+     * phones/tablets.
+     */
+    fun imageMemoryCacheFraction(context: Context): Double =
+        if (DeviceUtils.isTv(context.applicationContext)) 0.15 else 0.20
 }

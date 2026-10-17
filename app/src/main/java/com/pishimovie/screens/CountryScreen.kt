@@ -69,6 +69,8 @@ import com.pishimovie.R
 import com.pishimovie.data.model.FilterType
 import com.pishimovie.data.model.Poster
 import com.pishimovie.ui.country.CountryViewModel
+import com.pishimovie.ui.theme.rememberReducedMotion
+import com.pishimovie.ui.theme.rememberShimmerSweepOrStatic
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
 
@@ -328,14 +330,9 @@ fun CountryShimmerPosterItem(
     shimmerColor: Color,
     shimmerColorShade: Color
 ) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
-        initialValue = -1000f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200)
-        ), label = "shimmer_translate"
-    )
+    // TV / reduced motion: static shimmer — no infinite transition is
+    // composed at all (see TvMotion).
+    val translateAnim = rememberShimmerSweepOrStatic()
     
     val brush = Brush.linearGradient(
         colors = listOf(
@@ -505,6 +502,19 @@ fun CountryPosterGrid(
 
 @Composable
 fun CountryModernCircularProgressIndicator() {
+    // TV / reduced motion: static loading ring — no infinite progress or
+    // rotation animation is composed at all (see TvMotion).
+    if (rememberReducedMotion()) {
+        CircularProgressIndicator(
+            progress = 0.65f,
+            modifier = Modifier.size(48.dp),
+            strokeWidth = 4.dp,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary
+        )
+        return
+    }
+
     val transition = rememberInfiniteTransition(label = "progress")
     val progress by transition.animateFloat(
         initialValue = 0f,

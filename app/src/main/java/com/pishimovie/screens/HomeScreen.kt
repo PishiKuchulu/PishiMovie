@@ -92,6 +92,8 @@ import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.ShapeCardDefault
 import com.pishimovie.ui.theme.pishiAmbientGradient
 import com.pishimovie.ui.theme.pishiBlur
+import com.pishimovie.ui.theme.rememberReducedMotion
+import com.pishimovie.ui.theme.tvSpringOrSnap
 import com.pishimovie.utils.StorageUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -304,6 +306,8 @@ private fun CompactCategoryCard(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
+        // TV: press feedback snaps instead of springing (see TvMotion).
+        animationSpec = tvSpringOrSnap(),
         label = "cat_scale",
     )
     Row(
@@ -433,6 +437,8 @@ private fun CompactCountryCard(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
+        // TV: press feedback snaps instead of springing (see TvMotion).
+        animationSpec = tvSpringOrSnap(),
         label = "country_scale",
     )
     Row(
@@ -501,14 +507,20 @@ private fun HeroCarousel(movies: List<Movie>, navController: NavController) {
     // Track which movie is "current" for the blurred backdrop
     var currentIndex by remember { mutableIntStateOf(pagerState.currentPage % movies.size) }
 
-    // Auto-advance every 5 seconds
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            pagerState.animateScrollToPage(
-                pagerState.currentPage + 1,
-                animationSpec = PishiMotion.tweenXl()
-            )
+    // TV / reduced motion policy for this carousel (see TvMotion).
+    val reducedMotion = rememberReducedMotion()
+
+    // Auto-advance every 5 seconds — disabled on TV: D-pad users advance
+    // manually, and the perpetual animation churn stutters on weak TV GPUs.
+    if (!reducedMotion) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(5000)
+                pagerState.animateScrollToPage(
+                    pagerState.currentPage + 1,
+                    animationSpec = PishiMotion.tweenXl()
+                )
+            }
         }
     }
 
@@ -578,8 +590,10 @@ private fun HeroCarousel(movies: List<Movie>, navController: NavController) {
                     .scale(scale)
                     .alpha(alpha)
                     .graphicsLayer {
-                        // Subtle 3D rotation effect for non-center items
-                        rotationY = pageOffset * 15f
+                        // Subtle 3D rotation effect for non-center items —
+                        // disabled on TV (offscreen 3D layers are expensive
+                        // on weak TV GPUs).
+                        rotationY = if (reducedMotion) 0f else pageOffset * 15f
                         cameraDistance = 12f * density
                         shadowElevation = elevation.toPx()
                         shape = posterShape

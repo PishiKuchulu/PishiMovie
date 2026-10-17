@@ -7,6 +7,8 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.pishimovie.util.PerformanceOptimizer
+import com.pishimovie.utils.DeviceUtils
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -15,12 +17,14 @@ import java.util.concurrent.TimeUnit
  * PishiMovie Coil ImageLoader configuration (Phase 6: "Smarter image cache").
  *
  * Optimizations over the baseline:
- *  - Memory cache: 20% of available app memory (slightly reduced to leave
- *    headroom for the API response cache + Compose's own bitmap pool).
+ *  - Memory cache: 20% of available app memory on phones/tablets, 15% on TV
+ *    (TVs share 1–2 GB RAM with the system — see
+ *    [PerformanceOptimizer.imageMemoryCacheFraction]).
  *  - Disk cache: 384 MB (up from 256 MB) — enough for ~2000 posters.
  *  - OkHttp connection pool: 5 idle connections, 5-minute keep-alive (reduces
  *    TLS handshake overhead for repeated poster loads).
- *  - Crossfade duration reduced to 200ms (from 300ms) for snappier feels.
+ *  - Crossfade (200ms) on phones/tablets; DISABLED on TV — the fade forces
+ *    an extra GPU-composited layer per image and stutters on weak TV chipsets.
  *  - Hardware bitmaps enabled on API 28+ (saves heap on OLED devices).
  *  - Both memory + disk policies enabled → previously-loaded posters are
  *    available offline (Phase 6: "Cached posters").
@@ -28,9 +32,15 @@ import java.util.concurrent.TimeUnit
 object PishiImageLoader : ImageLoaderFactory {
 
     private const val DISK_CACHE_BYTES: Long = 384L * 1024 * 1024 // 384 MB
-    private const val MEMORY_CACHE_FRACTION: Double = 0.20
+    // Memory-cache fraction now comes from PerformanceOptimizer
+    // (TV-aware: 15% on TV, 20% elsewhere).
 
     override fun newImageLoader(): ImageLoader {
+        val appContext = PishiContextHolder.context
+        // TV chipsets (often older GPUs driving 4K with 1–2 GB of shared RAM)
+        // stutter on crossfade compositing — disable the fade on TV, keep the
+        // 200ms fade on phones/tablets.
+        val isTv = DeviceUtils.isTv(appContext)
         return ImageLoader.Builder(PishiContextHolder.context)
             .okHttpClient {
                 OkHttpClient.Builder()
@@ -45,17 +55,23 @@ object PishiImageLoader : ImageLoaderFactory {
                 // (the no-arg form only exists in Coil 3) — verified against
                 // the real compiler; do not "fix" this to no-arg.
                 MemoryCache.Builder(PishiContextHolder.context)
-                    .maxSizePercent(MEMORY_CACHE_FRACTION)
+                    .maxSizePercent(PerformanceOptimizer.imageMemoryCacheFraction(appContext))
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(PishiContextHolder.context.cacheDir.resolve("pishi_image_cache"))
+                    .directory(appContext.cacheDir.resolve("pishi_image_cache"))
                     .maxSizeBytes(DISK_CACHE_BYTES)
                     .build()
             }
-            .crossfade(true)
-            .crossfade(200)
+            .apply {
+                // Crossfade is disabled by default in Coil; enable the 200ms
+                // fade only off-TV.
+                if (!isTv) {
+                    crossfade(true)
+                    crossfade(200)
+                }
+            }
             .respectCacheHeaders(false)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)

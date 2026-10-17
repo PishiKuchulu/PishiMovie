@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -48,10 +49,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import com.pishimovie.R
 import com.pishimovie.ui.theme.LocalPishiDimens
-import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.ShapeCardDefault
 import com.pishimovie.ui.theme.pishiAmbientGradient
 import com.pishimovie.ui.theme.pishiEdgeLit
+import com.pishimovie.ui.theme.tvSpringOrSnap
 
 /**
  * Premium poster card — the workhorse of PishiMovie's browse experience.
@@ -85,19 +86,23 @@ fun PishiPosterCard(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val hovered by interaction.collectIsHoveredAsState()
+    // D-pad focus (TV): drives the same highlight as hover so the focused
+    // card is obvious without any animation.
+    val focused by interaction.collectIsFocusedAsState()
 
     val scale by animateFloatAsState(
         targetValue = when {
             pressed -> 0.96f
             hovered -> 1.04f
+            focused -> 1.04f
             else -> 1f
         },
-        animationSpec = PishiMotion.springPress(),
+        animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "poster_scale",
     )
     val edgeIntensity by animateFloatAsState(
-        targetValue = if (hovered || pressed) 1f else 0f,
-        animationSpec = PishiMotion.springPress(),
+        targetValue = if (hovered || pressed || focused) 1f else 0f,
+        animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "poster_edge",
     )
 
@@ -325,7 +330,7 @@ fun PishiPlayButton(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = PishiMotion.springPress(),
+        animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "play_btn_scale",
     )
 
@@ -384,7 +389,7 @@ fun PishiSecondaryButton(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = PishiMotion.springPress(),
+        animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "secondary_btn_scale",
     )
     

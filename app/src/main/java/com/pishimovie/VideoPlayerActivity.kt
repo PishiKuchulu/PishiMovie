@@ -17,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -107,6 +109,7 @@ import com.pishimovie.data.model.WatchedEpisode
 import com.pishimovie.player.PlayerViewModel
 import com.pishimovie.player.SubtitleManager
 import com.pishimovie.player.TrackManager
+import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
 import com.pishimovie.ui.theme.FontManager
 import kotlinx.coroutines.delay
@@ -247,6 +250,10 @@ class VideoPlayerActivity : AppCompatActivity() {
         } else {
             finish()
         }
+
+        // The default activity transition stutters on weak TV GPUs (especially
+        // with a video surface) — skip it on TV, keep it on mobile.
+        if (DeviceUtils.isTv(this)) overridePendingTransition(0, 0)
     }
 
     private fun enterPipIfPossible() {
@@ -337,6 +344,12 @@ class VideoPlayerActivity : AppCompatActivity() {
         viewModel.release()
         try { window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) } catch (_: Exception) {}
     }
+
+    override fun finish() {
+        super.finish()
+        // Skip the exit animation on TV (see onCreate).
+        if (DeviceUtils.isTv(this)) overridePendingTransition(0, 0)
+    }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -351,6 +364,9 @@ private fun VideoPlayerScreen(
     onPip: () -> Unit,
 ) {
     val context = LocalContext.current
+    // TV GPUs (often weak SoCs driving 4K) stutter on fade/scale compositing —
+    // show/hide the player chrome instantly on TV, keep animations on mobile.
+    val isTv = remember(context) { DeviceUtils.isTv(context) }
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentPosition by viewModel.currentPosition.collectAsState()
     val duration by viewModel.duration.collectAsState()
@@ -580,8 +596,8 @@ private fun VideoPlayerScreen(
         // ── Skip Intro ────────────────────────────────────────────────────
         AnimatedVisibility(
             visible = showSkipIntro && !isLocked,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
+            enter = if (isTv) EnterTransition.None else fadeIn() + scaleIn(),
+            exit = if (isTv) ExitTransition.None else fadeOut() + scaleOut(),
             modifier = Modifier.align(Alignment.BottomEnd),
         ) {
             Row(
@@ -600,10 +616,18 @@ private fun VideoPlayerScreen(
         }
 
         // ── Brightness / Volume indicators ────────────────────────────────
-        AnimatedVisibility(visible = showBrightnessIndicator, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(
+            visible = showBrightnessIndicator,
+            enter = if (isTv) EnterTransition.None else fadeIn(),
+            exit = if (isTv) ExitTransition.None else fadeOut(),
+        ) {
             GestureIndicator(Icons.Default.BrightnessMedium, "${(brightness * 100).toInt()}%")
         }
-        AnimatedVisibility(visible = showVolumeIndicator, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(
+            visible = showVolumeIndicator,
+            enter = if (isTv) EnterTransition.None else fadeIn(),
+            exit = if (isTv) ExitTransition.None else fadeOut(),
+        ) {
             GestureIndicator(Icons.AutoMirrored.Filled.VolumeUp, "${(volume * 100).toInt()}%")
         }
 
@@ -711,7 +735,11 @@ private fun VideoPlayerScreen(
         // ── Locked overlay ────────────────────────────────────────────────
         if (isLocked) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                AnimatedVisibility(visible = showControls, enter = fadeIn(), exit = fadeOut()) {
+                AnimatedVisibility(
+                    visible = showControls,
+                    enter = if (isTv) EnterTransition.None else fadeIn(),
+                    exit = if (isTv) ExitTransition.None else fadeOut(),
+                ) {
                     IconButton(
                         onClick = { isLocked = false; showControls = true },
                         modifier = Modifier.padding(top = 48.dp).size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape),

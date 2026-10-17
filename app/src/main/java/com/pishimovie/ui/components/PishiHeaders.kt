@@ -47,6 +47,8 @@ import com.pishimovie.ui.theme.LocalPishiDimens
 import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.ShapePill
 import com.pishimovie.ui.theme.pishiEdgeLit
+import com.pishimovie.ui.theme.tvSpringOrSnap
+import com.pishimovie.ui.theme.tvTween
 
 /**
  * Section header for home-screen rows — title on the left, optional "see all"
@@ -106,7 +108,7 @@ fun PishiSectionHeader(
             val pressed by interaction.collectIsPressedAsState()
             val scale by animateFloatAsState(
                 targetValue = if (pressed) 0.94f else 1f,
-                animationSpec = PishiMotion.springPress(),
+                animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
                 label = "see_all_scale",
             )
             Row(
@@ -154,7 +156,7 @@ fun PishiChip(
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = PishiMotion.springPress(),
+        animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "chip_scale",
     )
 
@@ -164,7 +166,7 @@ fun PishiChip(
             selected -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         },
-        animationSpec = PishiMotion.tweenShort(),
+        animationSpec = tvTween(PishiMotion.DurationShort),  // TV: 0ms (see TvMotion).
         label = "chip_bg",
     )
     val textColor by animateColorAsState(
@@ -173,7 +175,7 @@ fun PishiChip(
             selected -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = PishiMotion.tweenShort(),
+        animationSpec = tvTween(PishiMotion.DurationShort),  // TV: 0ms (see TvMotion).
         label = "chip_text",
     )
 

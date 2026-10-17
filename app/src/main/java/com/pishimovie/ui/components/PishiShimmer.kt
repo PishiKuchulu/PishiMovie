@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pishimovie.ui.theme.LocalPishiDimens
 import com.pishimovie.ui.theme.PishiMotion
+import com.pishimovie.ui.theme.rememberReducedMotion
 
 /**
  * PishiMovie premium shimmer block.
@@ -46,6 +47,18 @@ fun PishiShimmerBox(
     cornerRadius: Dp = 6.dp,
     shimmerOffset: Float? = null,
 ) {
+    // TV / reduced motion: static placeholder — no infinite transition is
+    // composed at all (see TvMotion).
+    if (rememberReducedMotion()) {
+        Box(
+            modifier = modifier
+                .height(height)
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+        return
+    }
+
     val translateAnim = shimmerOffset ?: rememberShimmerOffset()
 
     val base = MaterialTheme.colorScheme.surfaceVariant
@@ -128,8 +141,9 @@ fun PishiSkeletonRow(
     itemWidth: Dp = 140.dp,
 ) {
     val dimens = LocalPishiDimens.current
-    // ONE shared sweep for the whole row (title + all cards)
-    val shimmerOffset = rememberShimmerOffset()
+    // ONE shared sweep for the whole row (title + all cards) — none at all
+    // on TV / reduced motion.
+    val shimmerOffset = if (rememberReducedMotion()) null else rememberShimmerOffset()
     Column(modifier = modifier.fillMaxWidth().padding(vertical = dimens.md)) {
         // Section title skeleton
         Box(modifier = Modifier.padding(horizontal = dimens.lg)) {

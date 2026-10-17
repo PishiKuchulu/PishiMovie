@@ -25,7 +25,10 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.pishimovie.ui.theme.CinematicPalette
+import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.darken
+import com.pishimovie.ui.theme.rememberReducedMotion
+import com.pishimovie.ui.theme.tvTween
 
 /**
  * The signature PishiMovie cinematic backdrop.
@@ -57,8 +60,13 @@ fun CinematicBackdrop(
     backdropHeight: Dp = 420.dp,
 ) {
     val context = LocalContext.current
+    // TV / reduced motion: static backdrop. The parallax translation and fade
+    // recompose every scroll frame — expensive on weak TV GPUs for zero
+    // benefit on a D-pad UI. The cinematic look (blur, gradients, vignette)
+    // is fully kept.
+    val reducedMotion = rememberReducedMotion()
     // Clamp parallax to [0,1]
-    val clampedParallax = parallaxOffset.coerceIn(0f, 1f)
+    val clampedParallax = if (reducedMotion) 0f else parallaxOffset.coerceIn(0f, 1f)
 
     // Parallax travel distance in px (density-aware): up to 120dp upward as the user scrolls
     val density = LocalDensity.current
@@ -149,6 +157,8 @@ fun CinematicReveal(
 ) {
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
+        // TV: instant reveal (0ms) instead of an animated fade.
+        animationSpec = tvTween(PishiMotion.DurationShort),
         label = "cinematic_reveal",
     )
     Box(modifier = modifier.alpha(alpha)) {
