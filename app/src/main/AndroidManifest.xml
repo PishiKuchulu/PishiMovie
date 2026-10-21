@@ -22,6 +22,9 @@
     <!-- Download notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- In-app update: hand the downloaded APK to the system installer -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Declare that the app supports Android TV -->
     <uses-feature
         android:name="android.software.leanback"
@@ -81,6 +84,17 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/subtitle_settings"
             android:hardwareAccelerated="true" />
+        <!-- Shares the downloaded update APK (cacheDir/shared) with the
+             system installer for the in-app update flow. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

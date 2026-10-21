@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -27,6 +30,9 @@ import com.pishimovie.navigation.AppNavigation
 import com.pishimovie.navigation.AppScreens
 import com.pishimovie.navigation.PishiTopAppBar
 import com.pishimovie.navigation.SidebarNavigation
+import com.pishimovie.ui.components.AppUpdateController
+import com.pishimovie.ui.components.AppUpdateDialog
+import com.pishimovie.ui.components.LocalAppUpdateController
 import com.pishimovie.ui.theme.PishiContextHolder
 import com.pishimovie.ui.theme.PishiImageLoader
 import com.pishimovie.ui.theme.PishiMovieTheme
@@ -119,6 +125,20 @@ fun MainScreen() {
         )
     }
 
+    // In-app update: one controller at the app root, shared by the launch
+    // auto-check popup and the Settings card.
+    val context = LocalContext.current
+    val updateController = remember { AppUpdateController(context) }
+
+    LaunchedEffect(Unit) {
+        updateController.check()
+    }
+    LaunchedEffect(updateController.state) {
+        if (updateController.state is AppUpdateController.State.Available) {
+            updateController.dialogRequested = true
+        }
+    }
+
     // Top-level pages show the shared PishiTopAppBar.
     val showTopBar = when {
         currentRoute == null -> true
@@ -136,40 +156,49 @@ fun MainScreen() {
         else -> false
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            if (!isTv && showTopBar) {
-                PishiTopAppBar(
-                    navController = navController,
-                    currentRoute = currentRoute,
-                )
-            }
-        },
-    ) { innerPadding ->
-        // Force layout direction app-wide based on locale if needed, 
-        // but here we follow system/app locale.
-        if (isTv) {
-            // TV layout with sidebar navigation
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                SidebarNavigation(navController)
-                Box(
+    CompositionLocalProvider(LocalAppUpdateController provides updateController) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                if (!isTv && showTopBar) {
+                    PishiTopAppBar(
+                        navController = navController,
+                        currentRoute = currentRoute,
+                    )
+                }
+            },
+        ) { innerPadding ->
+            // Force layout direction app-wide based on locale if needed,
+            // but here we follow system/app locale.
+            if (isTv) {
+                // TV layout with sidebar navigation
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 16.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)
+                        .fillMaxSize()
+                        .padding(innerPadding)
                 ) {
+                    SidebarNavigation(navController)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 16.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)
+                    ) {
+                        AppNavigation(navController)
+                    }
+                }
+            } else {
+                // Mobile/tablet layout — content fills the area below the top bar
+                Box(modifier = Modifier.padding(innerPadding)) {
                     AppNavigation(navController)
                 }
             }
-        } else {
-            // Mobile/tablet layout — content fills the area below the top bar
-            Box(modifier = Modifier.padding(innerPadding)) {
-                AppNavigation(navController)
-            }
+        }
+
+        if (updateController.dialogRequested) {
+            AppUpdateDialog(
+                controller = updateController,
+                onDismiss = { updateController.dialogRequested = false },
+            )
         }
     }
 }

@@ -476,5 +476,18 @@
     <string name="subtitle_preview_line">This is a subtitle preview</string>
     <string name="collection_not_found">مجموعه یافت نشد</string>
     <string name="collection_title">مجموعه</string>
+    <string name="app_update">به‌روزرسانی برنامه</string>
+    <string name="check_for_update">بررسی به‌روزرسانی</string>
+    <string name="update_available">به‌روزرسانی موجود است</string>
+    <string name="new_version_ready">نسخه جدید آماده است</string>
+    <string name="version_current">فعلی</string>
+    <string name="version_new">جدید</string>
+    <string name="download_update">دانلود به‌روزرسانی</string>
+    <string name="install_update">نصب</string>
+    <string name="later">بعداً</string>
+    <string name="update_checking">در حال بررسی به‌روزرسانی…</string>
+    <string name="up_to_date">برنامه به‌روز است</string>
+    <string name="update_check_failed">بررسی به‌روزرسانی ناموفق بود</string>
+    <string name="current_version">نسخه فعلی</string>
 
 </resources>

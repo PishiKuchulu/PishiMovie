@@ -476,5 +476,18 @@
     <string name="subtitle_preview_line">This is a subtitle preview</string>
     <string name="collection_not_found">مجموعه یافت نشد</string>
     <string name="collection_title">مجموعه</string>
+    <string name="app_update">App update</string>
+    <string name="check_for_update">Check for update</string>
+    <string name="update_available">Update available</string>
+    <string name="new_version_ready">A new version is ready</string>
+    <string name="version_current">Current</string>
+    <string name="version_new">New</string>
+    <string name="download_update">Download update</string>
+    <string name="install_update">Install</string>
+    <string name="later">Later</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="up_to_date">You\'re up to date</string>
+    <string name="update_check_failed">Update check failed</string>
+    <string name="current_version">Current version</string>
 
 </resources>

@@ -6,6 +6,8 @@ import com.pishimovie.ui.theme.rememberThemeManager
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.pishimovie.util.PLog
+import com.pishimovie.ui.components.AppUpdateSettingsCard
+import com.pishimovie.ui.components.LocalAppUpdateController
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -356,6 +358,10 @@ fun SettingsScreen(
                 accentTint = MaterialTheme.colorScheme.primary,
                 onClick = { navController?.navigate("about") },
             )
+        }
+
+        item(key = "app_update") {
+            AppUpdateSettingsCard(LocalAppUpdateController.current)
         }
 
         item(key = "reset") {
