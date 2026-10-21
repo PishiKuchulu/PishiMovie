@@ -29,6 +29,9 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Restore signing key from repo secrets
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "${{ runner.temp }}/release.keystore"
