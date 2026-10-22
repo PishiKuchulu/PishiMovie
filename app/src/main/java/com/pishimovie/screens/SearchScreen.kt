@@ -1,7 +1,12 @@
 package com.pishimovie.screens
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.speech.RecognizerIntent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -31,6 +36,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -69,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -104,7 +112,7 @@ import com.pishimovie.utils.StorageUtils
  *  - Live suggestions dropdown (debounced 200ms, 5 results max)
  *  - Search history (persistent, tappable, removable)
  *  - Trending searches (when no query)
- *  - Voice search placeholder (icon → toast)
+ *  - Voice search (system speech recognizer)
  *  - Filter sheet: Genre (multi), Year (range), Rating (min), Language (single), Type
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -128,6 +136,24 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         viewModel.initialize(context)
+        // Land the user straight in the search field (keyboard open).
+        focusRequester.requestFocus()
+    }
+
+    // Real voice search via the system speech recognizer; the recognized
+    // text becomes the query and is submitted immediately.
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                viewModel.updateQuery(spoken)
+                viewModel.submitSearch()
+            }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -172,9 +198,27 @@ fun SearchScreen(
                     },
                     trailingIcon = {
                         Row {
-                            // Voice search placeholder
+                            // Voice search — system speech recognizer
                             IconButton(onClick = {
-                                Toast.makeText(context, context.getString(R.string.voice_search_soon), Toast.LENGTH_SHORT).show()
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(
+                                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                    )
+                                    putExtra(
+                                        RecognizerIntent.EXTRA_PROMPT,
+                                        context.getString(R.string.search_voice_search),
+                                    )
+                                }
+                                try {
+                                    voiceLauncher.launch(intent)
+                                } catch (e: ActivityNotFoundException) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.voice_search_unsupported),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
                             }) {
                                 Icon(
                                     imageVector = Icons.Default.Mic,
@@ -336,7 +380,7 @@ fun SearchScreen(
                             modifier = Modifier.padding(dimens.lg),
                         ) {
                             Text(
-                                text = uiState.errorMessage!!,
+                                text = stringResource(R.string.search_failed),
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -522,7 +566,7 @@ private fun SearchInitialContent(
                 horizontalArrangement = Arrangement.spacedBy(dimens.sm),
                 verticalArrangement = Arrangement.spacedBy(dimens.sm),
             ) {
-                uiState.trending.forEach { term ->
+                stringArrayResource(R.array.trending_terms).forEach { term ->
                     PishiChip(
                         text = term,
                         selected = false,
@@ -585,8 +629,11 @@ private fun SuggestionRow(poster: Poster, onClick: () -> Unit) {
 @Composable
 private fun LoadingGrid() {
     val dimens = LocalPishiDimens.current
+    // Match the results grid's column count per device (was hardcoded to 2,
+    // which looked broken on TV's 5-column results).
+    val columns = DeviceUtils.getGridColumns(LocalContext.current.resources)
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Fixed(columns),
         contentPadding = PaddingValues(dimens.lg),
         horizontalArrangement = Arrangement.spacedBy(dimens.md),
         verticalArrangement = Arrangement.spacedBy(dimens.md),
@@ -633,6 +680,7 @@ private fun SearchFilterSheet(
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = dimens.xxl, vertical = dimens.lg)
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(dimens.lg),
@@ -719,7 +767,7 @@ private fun SearchFilterSheet(
                 horizontalArrangement = Arrangement.spacedBy(dimens.xs),
                 verticalArrangement = Arrangement.spacedBy(dimens.xs),
             ) {
-                genres.take(15).forEach { genre ->
+                genres.forEach { genre ->
                     PishiChip(
                         text = genre.title,
                         selected = genre.id in selectedGenres,
@@ -745,7 +793,7 @@ private fun SearchFilterSheet(
                 verticalArrangement = Arrangement.spacedBy(minOf(dimens.xs, 8.dp)),
             ) {
                 PishiChip(text = stringResource(R.string.language_any), selected = language == null, onClick = { language = null })
-                countries.take(10).forEach { country ->
+                countries.forEach { country ->
                     PishiChip(
                         text = country.title,
                         selected = language == country.title,

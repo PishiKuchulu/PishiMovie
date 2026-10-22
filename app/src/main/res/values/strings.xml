@@ -392,6 +392,16 @@
     <string name="search_person_placeholder">جستجوی %1$s…</string>
     <string name="search_for_person_desc">نامی را برای یافتن عناوین وارد کنید</string>
     <string name="search_placeholder">جستجوی فیلم، سریال و…</string>
+    <string name="search_failed">جستجو ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="voice_search_unsupported">جستجوی صوتی در این دستگاه پشتیبانی نمی‌شود</string>
+    <string-array name="trending_terms">
+        <item>Batman</item>
+        <item>Avengers</item>
+        <item>Spider-Man</item>
+        <item>Joker</item>
+        <item>Inception</item>
+        <item>Interstellar</item>
+    </string-array>
     <string name="voice_search_soon">جستجوی صوتی به‌زودی…</string>
     <string name="clear_filters">پاک کردن فیلترها</string>
     <string name="sorted_by_year">مرتب‌سازی: سال</string>

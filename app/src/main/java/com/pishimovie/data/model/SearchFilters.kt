@@ -36,8 +36,13 @@ data class SearchFilters(
                     else -> {}
                 }
             }
-            // Year range
-            if (p.year < yearFrom || p.year > yearTo) return@filter false
+            // Year range — only when the user actually narrowed it.
+            // (Previously this ran unconditionally, so posters with an
+            // unknown year — backend default 0 — vanished whenever ANY
+            // filter was applied.)
+            if (yearFrom > 1900 || yearTo < 2100) {
+                if (p.year < yearFrom || p.year > yearTo) return@filter false
+            }
             // Min rating
             if (p.imdb.toFloat() < minRating) return@filter false
             // Genre filter (poster must contain ALL selected genres)

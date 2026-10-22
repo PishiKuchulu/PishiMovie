@@ -392,6 +392,16 @@
     <string name="search_person_placeholder">Search %1$s…</string>
     <string name="search_for_person_desc">Enter a name to find titles</string>
     <string name="search_placeholder">Search movies, series…</string>
+    <string name="search_failed">Search failed. Check your internet connection and try again.</string>
+    <string name="voice_search_unsupported">Voice search is not supported on this device</string>
+    <string-array name="trending_terms">
+        <item>Batman</item>
+        <item>Avengers</item>
+        <item>Spider-Man</item>
+        <item>Joker</item>
+        <item>Inception</item>
+        <item>Interstellar</item>
+    </string-array>
     <string name="voice_search_soon">Voice search coming soon…</string>
     <string name="clear_filters">Clear Filters</string>
     <string name="sorted_by_year">Sorted by Year</string>
