@@ -86,3 +86,11 @@ Every push to `main` auto-builds and publishes the APK to [Releases](https://git
 ساخته‌شده با ❤️ برای عاشقان سینما — *Made with love for movie lovers*
 
 </div>
+
+---
+
+## 🙏 اعتبار | Credits
+
+این پروژه بر پایه‌ی پروژه‌ی متن‌باز **[CCloud](https://github.com/code3-dev/CCloud)** ساخته شده است. از سازندگانش برای پایه‌ی عالی و زحمتی که کشیدند صمیمانه سپاسگزاریم. 🌹
+
+*This project is based on the open-source **[CCloud](https://github.com/code3-dev/CCloud)** project. Heartfelt thanks to its creators for the excellent foundation they built.*
