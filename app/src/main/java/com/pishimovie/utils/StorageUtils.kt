@@ -13,6 +13,7 @@ import com.pishimovie.data.model.WatchedEpisode
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileOutputStream
 import java.util.Date
 
 object StorageUtils {
@@ -29,6 +30,53 @@ object StorageUtils {
     /** Max movie/series detail files kept in detail_cache/. */
     private const val DETAIL_CACHE_MAX_FILES = 50
 
+    /**
+     * Atomically replaces [file]'s content with [content]: the bytes are
+     * written to a sibling temp file, flushed, fsynced and closed, then
+     * renamed over the target — a process death mid-write can therefore
+     * never leave a torn file behind (a reader sees either the old content
+     * or the new one, never half of each). Falls back to a direct write
+     * when the rename is refused by the filesystem.
+     *
+     * Public cross-engineer contract: repositories outside this object
+     * (e.g. search history) persist their JSON through this helper.
+     */
+    fun atomicWriteText(file: File, content: String) {
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        try {
+            FileOutputStream(tmp).use { out ->
+                out.write(content.toByteArray(Charsets.UTF_8))
+                out.flush()
+                runCatching { out.fd.sync() }
+            }
+            if (!tmp.renameTo(file)) {
+                file.writeText(content)
+                tmp.delete()
+            }
+        } catch (e: Exception) {
+            runCatching { tmp.delete() }
+            throw e
+        }
+    }
+
+    /**
+     * Moves an undecodable data [file] aside to `<name>.corrupt` (once —
+     * an older .corrupt snapshot is replaced, never chained), so a corrupt
+     * file is distinguishable from "no data yet" and its bytes survive for
+     * diagnosis instead of being silently overwritten by the next save.
+     */
+    private fun markCorrupt(file: File) {
+        try {
+            val corrupt = File(file.parentFile, file.name + ".corrupt")
+            if (corrupt.exists()) corrupt.delete()
+            if (file.renameTo(corrupt)) {
+                PLog.w(TAG, "Corrupt data file moved aside: ${file.name}")
+            }
+        } catch (e: Exception) {
+            PLog.e(TAG, "Failed to move corrupt file aside: ${file.name}", e)
+        }
+    }
+
     // Favorites functions - using a single JSON file for all favorites
     fun saveFavorite(context: Context, favorite: FavoriteItem) {
         synchronized(favoritesLock) {
@@ -41,10 +89,11 @@ object StorageUtils {
                 // Add the new favorite at the beginning of the list (newest first)
                 favorites.add(0, favorite)
 
-                // Save all favorites to a single file
+                // Save all favorites to a single file (atomic: a killed
+                // process mid-write must not tear the user's favorites).
                 val jsonString = Json.encodeToString(favorites)
                 val file = File(context.filesDir, "favorites.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Favorite saved: ${favorite.title}")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error saving favorite", e)
@@ -63,23 +112,46 @@ object StorageUtils {
                 // Save updated favorites list
                 val jsonString = Json.encodeToString(favorites)
                 val file = File(context.filesDir, "favorites.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Favorite removed: $id ($type)")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error removing favorite", e)
             }
         }
-    }
-    
-    fun clearAllFavorites(context: Context) {
-        try {
-            val file = File(context.filesDir, "favorites.json")
-            if (file.exists()) {
-                file.delete()
+        // Membership lives on the groups (movieIds/seriesIds): drop the
+        // removed id from every group so no orphan membership remains.
+        // Lock order favoritesLock → groupsLock is used consistently.
+        synchronized(groupsLock) {
+            try {
+                val groups = loadAllFavoriteGroups(context)
+                var changed = false
+                groups.forEach { group ->
+                    if (type == "movie" && group.containsMovie(id)) { group.removeMovie(id); changed = true }
+                    if (type == "series" && group.containsSeries(id)) { group.removeSeries(id); changed = true }
+                }
+                if (changed) {
+                    val file = File(context.filesDir, "favorite_groups.json")
+                    atomicWriteText(file, Json.encodeToString(groups))
+                }
+            } catch (e: Exception) {
+                PLog.e(TAG, "Error stripping removed favorite from groups", e)
             }
-            PLog.d(TAG, "All favorites cleared")
-        } catch (e: Exception) {
-            PLog.e(TAG, "Error clearing all favorites", e)
+        }
+    }
+
+    fun clearAllFavorites(context: Context) {
+        // Same lock as save/remove: a concurrent save that already read the
+        // old list must not resurrect the cleared data after the delete.
+        synchronized(favoritesLock) {
+            try {
+                val file = File(context.filesDir, "favorites.json")
+                if (file.exists()) {
+                    file.delete()
+                }
+                PLog.d(TAG, "All favorites cleared")
+            } catch (e: Exception) {
+                PLog.e(TAG, "Error clearing all favorites", e)
+            }
         }
     }
     
@@ -94,16 +166,16 @@ object StorageUtils {
     }
     
     fun loadAllFavorites(context: Context): List<FavoriteItem> {
+        val file = File(context.filesDir, "favorites.json")
+        if (!file.exists()) return emptyList()
         return try {
-            val file = File(context.filesDir, "favorites.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<List<FavoriteItem>>(jsonString)
-            } else {
-                emptyList()
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<List<FavoriteItem>>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading all favorites", e)
+            // Undecodable ≠ empty: preserve the bytes for diagnosis instead
+            // of letting the next save cement the data loss.
+            markCorrupt(file)
             emptyList()
         }
     }
@@ -209,7 +281,7 @@ object StorageUtils {
                 ensureDetailCacheMigrated(context)
                 val jsonString = Json.encodeToString(movie)
                 val file = File(detailCacheDir(context), "movie_${movie.id}.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 capDetailCache(context)
                 PLog.d(TAG, "Movie saved to file: ${file.name}")
             } catch (e: Exception) {
@@ -219,17 +291,15 @@ object StorageUtils {
     }
 
     fun loadMovieFromFile(context: Context, movieId: Int): Movie? {
+        ensureDetailCacheMigrated(context)
+        val file = File(detailCacheDir(context), "movie_$movieId.json")
+        if (!file.exists()) return null
         return try {
-            ensureDetailCacheMigrated(context)
-            val file = File(detailCacheDir(context), "movie_$movieId.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<Movie>(jsonString)
-            } else {
-                null
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<Movie>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading movie from file", e)
+            markCorrupt(file)
             null
         }
     }
@@ -262,7 +332,7 @@ object StorageUtils {
                 ensureDetailCacheMigrated(context)
                 val jsonString = Json.encodeToString(series)
                 val file = File(detailCacheDir(context), "series_${series.id}.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 capDetailCache(context)
                 PLog.d(TAG, "Series saved to file: ${file.name}")
             } catch (e: Exception) {
@@ -272,17 +342,15 @@ object StorageUtils {
     }
 
     fun loadSeriesFromFile(context: Context, seriesId: Int): Series? {
+        ensureDetailCacheMigrated(context)
+        val file = File(detailCacheDir(context), "series_$seriesId.json")
+        if (!file.exists()) return null
         return try {
-            ensureDetailCacheMigrated(context)
-            val file = File(detailCacheDir(context), "series_$seriesId.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<Series>(jsonString)
-            } else {
-                null
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<Series>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading series from file", e)
+            markCorrupt(file)
             null
         }
     }
@@ -323,7 +391,7 @@ object StorageUtils {
                 // Save all groups to a single file
                 val jsonString = Json.encodeToString(groups)
                 val file = File(context.filesDir, "favorite_groups.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Favorite group saved: ${group.name}")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error saving favorite group", e)
@@ -336,32 +404,37 @@ object StorageUtils {
             try {
                 val groups = loadAllFavoriteGroups(context).toMutableList()
 
-                // Remove the group with matching id (but don't allow removing default group)
+                // Remove the group with matching id (but don't allow removing default group).
+                // Group membership (movieIds/seriesIds) lives inside the group
+                // object itself, so deleting the group removes every membership
+                // with it — no orphaned membership can survive in another file.
+                // (The reverse direction is covered in removeFavorite, which
+                // strips the deleted favorite's id out of all groups.)
                 groups.removeAll { it.id == groupId && !it.isDefault }
 
                 // Save updated groups list
                 val jsonString = Json.encodeToString(groups)
                 val file = File(context.filesDir, "favorite_groups.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Favorite group removed: $groupId")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error removing favorite group", e)
             }
         }
     }
-    
+
     fun loadAllFavoriteGroups(context: Context): List<FavoriteGroup> {
+        val file = File(context.filesDir, "favorite_groups.json")
+        if (!file.exists()) {
+            // Return a default group if no groups exist
+            return listOf(FavoriteGroup(id = "default", name = "Favorites", isDefault = true))
+        }
         return try {
-            val file = File(context.filesDir, "favorite_groups.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<List<FavoriteGroup>>(jsonString)
-            } else {
-                // Return a default group if no groups exist
-                listOf(FavoriteGroup(id = "default", name = "Favorites", isDefault = true))
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<List<FavoriteGroup>>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading all favorite groups", e)
+            markCorrupt(file)
             // Return a default group if there's an error
             listOf(FavoriteGroup(id = "default", name = "Favorites", isDefault = true))
         }
@@ -389,7 +462,7 @@ object StorageUtils {
                     // Save updated groups
                     val jsonString = Json.encodeToString(groups)
                     val file = File(context.filesDir, "favorite_groups.json")
-                    file.writeText(jsonString)
+                    atomicWriteText(file, jsonString)
                     PLog.d(TAG, "Favorite added to group: $groupId")
                 }
             } catch (e: Exception) {
@@ -414,7 +487,7 @@ object StorageUtils {
                     // Save updated groups
                     val jsonString = Json.encodeToString(groups)
                     val file = File(context.filesDir, "favorite_groups.json")
-                    file.writeText(jsonString)
+                    atomicWriteText(file, jsonString)
                     PLog.d(TAG, "Favorite removed from group: $groupId")
                 }
             } catch (e: Exception) {
@@ -506,51 +579,47 @@ object StorageUtils {
         try {
             val jsonString = Json.encodeToString(settings)
             val file = File(context.filesDir, "video_player_settings.json")
-            file.writeText(jsonString)
+            atomicWriteText(file, jsonString)
             PLog.d(TAG, "Video player settings saved to file")
         } catch (e: Exception) {
             PLog.e(TAG, "Error saving video player settings to file", e)
         }
     }
-    
+
     fun loadVideoPlayerSettings(context: Context): VideoPlayerSettings {
+        val file = File(context.filesDir, "video_player_settings.json")
+        if (!file.exists()) return VideoPlayerSettings.DEFAULT
         return try {
-            val file = File(context.filesDir, "video_player_settings.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<VideoPlayerSettings>(jsonString)
-            } else {
-                VideoPlayerSettings.DEFAULT
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<VideoPlayerSettings>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading video player settings from file", e)
+            markCorrupt(file)
             VideoPlayerSettings.DEFAULT
         }
     }
-    
+
     // Font settings functions
     fun saveFontSettings(context: Context, settings: FontSettings) {
         try {
             val jsonString = Json.encodeToString(settings)
             val file = File(context.filesDir, "font_settings.json")
-            file.writeText(jsonString)
+            atomicWriteText(file, jsonString)
             PLog.d(TAG, "Font settings saved to file")
         } catch (e: Exception) {
             PLog.e(TAG, "Error saving font settings to file", e)
         }
     }
-    
+
     fun loadFontSettings(context: Context): FontSettings {
+        val file = File(context.filesDir, "font_settings.json")
+        if (!file.exists()) return FontSettings.DEFAULT
         return try {
-            val file = File(context.filesDir, "font_settings.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<FontSettings>(jsonString)
-            } else {
-                FontSettings.DEFAULT
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<FontSettings>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading font settings from file", e)
+            markCorrupt(file)
             FontSettings.DEFAULT
         }
     }
@@ -574,7 +643,7 @@ object StorageUtils {
                 // Save all watched episodes to a single file
                 val jsonString = Json.encodeToString(watchedEpisodes)
                 val file = File(context.filesDir, "watched_episodes.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Watched episode saved: Series ${watchedEpisode.seriesId}, Season ${watchedEpisode.seasonId}, Episode ${watchedEpisode.episodeId}")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error saving watched episode", e)
@@ -597,7 +666,7 @@ object StorageUtils {
                 // Save updated watched episodes list
                 val jsonString = Json.encodeToString(watchedEpisodes)
                 val file = File(context.filesDir, "watched_episodes.json")
-                file.writeText(jsonString)
+                atomicWriteText(file, jsonString)
                 PLog.d(TAG, "Watched episode removed: Series $seriesId, Season $seasonId, Episode $episodeId")
             } catch (e: Exception) {
                 PLog.e(TAG, "Error removing watched episode", e)
@@ -620,29 +689,30 @@ object StorageUtils {
     }
     
     fun loadAllWatchedEpisodes(context: Context): List<WatchedEpisode> {
+        val file = File(context.filesDir, "watched_episodes.json")
+        if (!file.exists()) return emptyList()
         return try {
-            val file = File(context.filesDir, "watched_episodes.json")
-            if (file.exists()) {
-                val jsonString = file.readText()
-                Json.decodeFromString<List<WatchedEpisode>>(jsonString)
-            } else {
-                emptyList()
-            }
+            val jsonString = file.readText()
+            Json.decodeFromString<List<WatchedEpisode>>(jsonString)
         } catch (e: Exception) {
             PLog.e(TAG, "Error loading all watched episodes", e)
+            markCorrupt(file)
             emptyList()
         }
     }
-    
+
     fun clearAllWatchedEpisodes(context: Context) {
-        try {
-            val file = File(context.filesDir, "watched_episodes.json")
-            if (file.exists()) {
-                file.delete()
+        // Same lock as save/remove (see clearAllFavorites).
+        synchronized(watchedEpisodesLock) {
+            try {
+                val file = File(context.filesDir, "watched_episodes.json")
+                if (file.exists()) {
+                    file.delete()
+                }
+                PLog.d(TAG, "All watched episodes cleared")
+            } catch (e: Exception) {
+                PLog.e(TAG, "Error clearing all watched episodes", e)
             }
-            PLog.d(TAG, "All watched episodes cleared")
-        } catch (e: Exception) {
-            PLog.e(TAG, "Error clearing all watched episodes", e)
         }
     }
 }

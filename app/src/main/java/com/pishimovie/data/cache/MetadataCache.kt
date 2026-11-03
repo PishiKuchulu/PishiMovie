@@ -4,6 +4,7 @@ import android.content.Context
 import com.pishimovie.data.model.Poster
 import com.pishimovie.data.model.SearchResult
 import com.pishimovie.util.PLog
+import com.pishimovie.utils.StorageUtils
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -40,7 +41,17 @@ class MetadataCache private constructor(private val context: Context) {
 
     private val index = mutableListOf<IndexEntry>()
     private val indexLock = Any()
+    /** Serializes writes of individual result files so concurrent writers
+     *  (instant search + suggestions) can never interleave bytes. */
+    private val resultWriteLock = Any()
     @Volatile private var indexLoaded = false
+
+    /**
+     * Canonical query form used for hashing, indexing and lookup, so case /
+     * whitespace variants ("Alien" vs " alien ") share one cache entry
+     * instead of producing orphan files the index cannot find again.
+     */
+    private fun normalizeQuery(query: String): String = query.trim().lowercase()
 
     private fun ensureIndexLoaded() {
         if (indexLoaded) return
@@ -61,8 +72,11 @@ class MetadataCache private constructor(private val context: Context) {
 
     private fun saveIndex() {
         try {
-            val snapshot = synchronized(indexLock) { index.toList() }
-            indexFile.writeText(json.encodeToString(snapshot))
+            // Snapshot + write under the same lock so two concurrent saves
+            // cannot interleave into an older snapshot winning.
+            synchronized(indexLock) {
+                StorageUtils.atomicWriteText(indexFile, json.encodeToString(index.toList()))
+            }
         } catch (e: Exception) {
             PLog.w(tag, "Failed to save index", e)
         }
@@ -71,14 +85,27 @@ class MetadataCache private constructor(private val context: Context) {
     /** Stores a search result for [query]. */
     fun putSearchResult(query: String, result: SearchResult) {
         ensureIndexLoaded()
+        val normalized = normalizeQuery(query)
         try {
-            val fileName = "${sha256Hex(query)}.json"
+            val fileName = "${sha256Hex(normalized)}.json"
             val file = cacheDir.resolve(fileName)
-            file.writeText(json.encodeToString(result))
+            // Guarded + atomic: concurrent instant-search/suggestion writers
+            // writing the same query must not interleave-corrupt the file.
+            synchronized(resultWriteLock) {
+                StorageUtils.atomicWriteText(file, json.encodeToString(result))
+            }
 
             synchronized(indexLock) {
-                index.removeAll { it.query.equals(query, ignoreCase = true) }
-                index.add(0, IndexEntry(query, System.currentTimeMillis(), fileName))
+                // Drop older entries for the same normalized query (incl.
+                // legacy mixed-case ones) and delete their now-orphan files.
+                val replaced = index.filter { normalizeQuery(it.query) == normalized }
+                index.removeAll { normalizeQuery(it.query) == normalized }
+                replaced.forEach { old ->
+                    if (old.fileName != fileName) {
+                        try { cacheDir.resolve(old.fileName).delete() } catch (_: Exception) {}
+                    }
+                }
+                index.add(0, IndexEntry(normalized, System.currentTimeMillis(), fileName))
                 while (index.size > maxEntries) {
                     val evicted = index.removeAt(index.size - 1)
                     try { cacheDir.resolve(evicted.fileName).delete() } catch (_: Exception) {}
@@ -86,16 +113,18 @@ class MetadataCache private constructor(private val context: Context) {
             }
             saveIndex()
         } catch (e: Exception) {
-            PLog.w(tag, "Failed to cache search result for $query", e)
+            // NOTE: never log the raw user query — it is personal data.
+            PLog.w(tag, "Failed to cache search result", e)
         }
     }
 
     /** Returns the cached search result for [query], or null. */
     fun getSearchResult(query: String): SearchResult? {
         ensureIndexLoaded()
+        val normalized = normalizeQuery(query)
         return try {
             val entry = synchronized(indexLock) {
-                index.find { it.query.equals(query, ignoreCase = true) }
+                index.find { normalizeQuery(it.query) == normalized }
             } ?: return null
             val file = cacheDir.resolve(entry.fileName)
             if (!file.exists()) return null

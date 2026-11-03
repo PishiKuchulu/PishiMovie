@@ -65,6 +65,11 @@ object MediaSourceFactory {
             .setUserAgent(USER_AGENT)
             .setConnectTimeoutMs(30_000)
             .setReadTimeoutMs(30_000)
+            // Cross-protocol redirects stay enabled on purpose: the backend
+            // hands out stream URLs that redirect between http/https and
+            // across CDN hosts, and DefaultHttpDataSource refuses such
+            // redirects otherwise — disabling this breaks playback. The
+            // Referer below is part of the same hotlink-protection scheme.
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(
                 mapOf(

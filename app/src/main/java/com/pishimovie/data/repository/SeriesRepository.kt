@@ -4,6 +4,7 @@ import com.pishimovie.data.model.Country
 import com.pishimovie.data.model.FilterType
 import com.pishimovie.data.model.Genre
 import com.pishimovie.data.model.Series
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -23,6 +24,8 @@ class SeriesRepository : BaseRepository() {
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
                 
                 parseSeries(jsonData)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching series: ${e.message}", e)
             }

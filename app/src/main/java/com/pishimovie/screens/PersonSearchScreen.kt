@@ -11,7 +11,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +23,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,11 +43,15 @@ import androidx.navigation.NavController
 import com.pishimovie.R
 import com.pishimovie.data.model.Poster
 import com.pishimovie.data.repository.DiscoveryRepository
+import com.pishimovie.navigation.navigateSafe
 import com.pishimovie.ui.components.PishiPosterCard
 import com.pishimovie.ui.components.PishiShimmerBox
 import com.pishimovie.ui.theme.LocalPishiDimens
+import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -67,21 +74,40 @@ fun PersonSearchScreen(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Poster>?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var searchFailed by remember { mutableStateOf(false) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+    var searchSeq by remember { mutableIntStateOf(0) }
+
+    val gridColumns = DeviceUtils.getGridColumns(context.resources)
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     fun doSearch() {
         val q = query.trim()
         if (q.isEmpty()) return
+        // Cancel the previous search; stale responses must never
+        // overwrite newer results.
+        searchJob?.cancel()
+        val seq = ++searchSeq
         loading = true
+        searchFailed = false
         focusManager.clearFocus()
-        scope.launch {
+        searchJob = scope.launch {
             try {
-                results = withContext(Dispatchers.IO) { repo.searchPerson(q) }
+                val found = withContext(Dispatchers.IO) { repo.searchPerson(q) }
+                if (seq == searchSeq && query.trim() == q) {
+                    results = found
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                results = emptyList()
+                if (seq == searchSeq && query.trim() == q) {
+                    searchFailed = true
+                }
             } finally {
-                loading = false
+                if (seq == searchSeq) {
+                    loading = false
+                }
             }
         }
     }
@@ -116,8 +142,28 @@ fun PersonSearchScreen(
                     placeholder = {
                         Text(stringResource(R.string.search_person_placeholder, localizedEntity), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
+                    label = {
+                        Text(stringResource(R.string.search))
+                    },
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchJob?.cancel()
+                                query = ""
+                                results = null
+                                searchFailed = false
+                                loading = false
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.clear),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { doSearch() }),
@@ -138,7 +184,7 @@ fun PersonSearchScreen(
             when {
                 loading -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Fixed(gridColumns),
                         contentPadding = PaddingValues(dimens.lg),
                         horizontalArrangement = Arrangement.spacedBy(dimens.md),
                         verticalArrangement = Arrangement.spacedBy(dimens.md),
@@ -148,6 +194,33 @@ fun PersonSearchScreen(
                                 modifier = Modifier.fillMaxWidth().height(220.dp),
                                 cornerRadius = 20.dp,
                             )
+                        }
+                    }
+                }
+                searchFailed -> {
+                    // A network failure is NOT "no results": show a real
+                    // error state with a retry action.
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = dimens.xl)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.e3_search_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { doSearch() }) {
+                                Text(stringResource(R.string.retry))
+                            }
                         }
                     }
                 }
@@ -185,7 +258,7 @@ fun PersonSearchScreen(
                 }
                 else -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Fixed(gridColumns),
                         contentPadding = PaddingValues(dimens.lg),
                         horizontalArrangement = Arrangement.spacedBy(dimens.md),
                         verticalArrangement = Arrangement.spacedBy(dimens.md),
@@ -197,12 +270,20 @@ fun PersonSearchScreen(
                                 rating = poster.imdb,
                                 imageUrl = poster.image,
                                 onClick = {
-                                    if (poster.isMovie()) {
-                                        StorageUtils.saveMovieToFile(context, poster.toMovie())
-                                        navController.navigate("single_movie/${poster.id}")
-                                    } else {
-                                        StorageUtils.saveSeriesToFile(context, poster.toSeries())
-                                        navController.navigate("single_series/${poster.id}")
+                                    // Save the detail file off the click
+                                    // thread, then navigate.
+                                    scope.launch {
+                                        if (poster.isMovie()) {
+                                            withContext(Dispatchers.IO) {
+                                                StorageUtils.saveMovieToFile(context, poster.toMovie())
+                                            }
+                                            navController.navigateSafe("single_movie/${poster.id}")
+                                        } else {
+                                            withContext(Dispatchers.IO) {
+                                                StorageUtils.saveSeriesToFile(context, poster.toSeries())
+                                            }
+                                            navController.navigateSafe("single_series/${poster.id}")
+                                        }
                                     }
                                 },
                                 cardWidth = 160.dp,

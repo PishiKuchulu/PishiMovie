@@ -4,8 +4,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,6 +40,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -154,6 +159,9 @@ fun PishiChip(
     val dimens = LocalPishiDimens.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    // D-pad focus (TV) gets a visible primary border — previously a focused
+    // chip was indistinguishable from an unfocused one.
+    val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.95f else 1f,
         animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
@@ -179,8 +187,15 @@ fun PishiChip(
         label = "chip_text",
     )
 
+    // Captured under a distinct name: inside the semantics{} block the
+    // receiver's own `selected` property would shadow the parameter.
+    val selectedState = selected
     Row(
         modifier = modifier
+            // Visual height stays chipHeight (36dp) but the layout/touch
+            // target is raised to the 48dp minimum the design system itself
+            // declares (dimens.minTouchTarget).
+            .minimumInteractiveComponentSize()
             .height(dimens.chipHeight)
             .scale(scale)
             .then(
@@ -190,9 +205,17 @@ fun PishiChip(
                     shape = ShapePill,
                 ) else Modifier
             )
+            .then(
+                if (focused) Modifier.border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = ShapePill,
+                ) else Modifier
+            )
             .clip(ShapePill)
             .background(backgroundColor)
-            .clickable(interaction, indication = null, enabled = enabled) { onClick() }
+            .clickable(interaction, indication = null, enabled = enabled, role = Role.Button) { onClick() }
+            .semantics { this.selected = selectedState }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -239,9 +262,9 @@ fun PishiRatingPill(
             fontWeight = FontWeight.Bold,
         )
         if (showLabel) {
-            Spacer(modifier = Modifier.width(2.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "•",
+                text = "IMDb",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White.copy(alpha = 0.6f),
             )

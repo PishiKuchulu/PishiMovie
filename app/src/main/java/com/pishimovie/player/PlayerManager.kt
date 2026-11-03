@@ -46,30 +46,47 @@ class PlayerManager(private val context: Context) {
 
     private var currentVideoUrl: String? = null
     private var currentResumePosition: Long = 0L
+    private var currentExternalSubtitleUri: String? = null
 
     /**
      * Creates and configures a new [ExoPlayer] for the given URL.
      * If a previous player exists, it is released first.
      * All exceptions are caught — this method never crashes the app.
+     *
+     * @return true when a player was created and prepared; false when
+     * creation failed (in which case [player] stays null and the caller —
+     * PlayerViewModel — is responsible for surfacing an error to the user).
      */
     fun preparePlayer(
         videoUrl: String,
         resumePositionMs: Long = 0L,
         videoPlayerSettings: VideoPlayerSettings,
         subtitleSettings: SubtitleSettings,
-    ) {
+        externalSubtitleUri: String? = null,
+    ): Boolean {
         releasePlayer()
+        var builtPlayer: ExoPlayer? = null
 
-        try {
-            val selector = DefaultTrackSelector(context).apply {
-                setParameters(
-                    buildUponParameters()
-                        .setForceLowestBitrate(false)
-                        .setForceHighestSupportedBitrate(true)
-                        .setExceedRendererCapabilitiesIfNecessary(false)
-                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                )
-            }
+        return try {
+            val selector = DefaultTrackSelector(context)
+            val selectorParams = selector.buildUponParameters()
+                // Start in AUTO quality: the track dialog's quality chips
+                // own the mode from here (PlayerViewModel.qualityMode) and
+                // must reflect the selector's real initial state.
+                .setForceLowestBitrate(false)
+                .setForceHighestSupportedBitrate(false)
+                .setExceedRendererCapabilitiesIfNecessary(false)
+                // Subtitle master switch: disabled means no text tracks.
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !subtitleSettings.enabled)
+            // Preferred subtitle language ("auto" = let the selector decide).
+            subtitleSettings.language
+                .takeIf { it.isNotBlank() && !it.equals("auto", ignoreCase = true) }
+                ?.let { selectorParams.setPreferredTextLanguage(it) }
+            // Preferred audio language from the player settings, if set.
+            videoPlayerSettings.defaultAudioTrack
+                ?.takeIf { it.isNotBlank() }
+                ?.let { selectorParams.setPreferredAudioLanguage(it) }
+            selector.setParameters(selectorParams)
             trackSelector = selector
 
             val loadControl = DefaultLoadControl.Builder()
@@ -88,7 +105,10 @@ class PlayerManager(private val context: Context) {
                 .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                 .build()
 
-            val mediaItem = MediaSourceFactory.buildMediaItem(videoUrl)
+            val mediaItem = MediaSourceFactory.buildMediaItem(
+                videoUrl,
+                subtitleUris = listOfNotNull(externalSubtitleUri?.takeIf { it.isNotBlank() }),
+            )
 
             val exoPlayer = ExoPlayer.Builder(context)
                 .setTrackSelector(selector)
@@ -98,6 +118,7 @@ class PlayerManager(private val context: Context) {
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .build()
+            builtPlayer = exoPlayer
 
             exoPlayer.setMediaItem(mediaItem)
             exoPlayer.repeatMode = ExoPlayer.REPEAT_MODE_OFF
@@ -113,11 +134,19 @@ class PlayerManager(private val context: Context) {
             player = exoPlayer
             currentVideoUrl = videoUrl
             currentResumePosition = resumePositionMs
+            currentExternalSubtitleUri = externalSubtitleUri
 
             createMediaSession(exoPlayer)
+            true
         } catch (_: Exception) {
-            // If player creation fails, leave player as null — the UI will
-            // show an error overlay instead of crashing.
+            // Player creation failed. Release anything half-built, leave
+            // player null, and report the failure — the ViewModel turns this
+            // into a visible error state with a Retry action.
+            runCatching { builtPlayer?.release() }
+            mediaSession = null
+            player = null
+            trackSelector = null
+            false
         }
     }
 
@@ -137,7 +166,10 @@ class PlayerManager(private val context: Context) {
         val url = currentVideoUrl ?: return
         val p = player ?: return
         try {
-            val mediaItem = MediaSourceFactory.buildMediaItem(url)
+            val mediaItem = MediaSourceFactory.buildMediaItem(
+                url,
+                subtitleUris = listOfNotNull(currentExternalSubtitleUri?.takeIf { it.isNotBlank() }),
+            )
             p.setMediaItem(mediaItem)
             p.prepare()
             p.seekTo(positionMs)

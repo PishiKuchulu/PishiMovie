@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by the E3 (catalog screens) fix wave. -->
+<resources>
+    <!-- Empty states (Movies / Series / Country) -->
+    <string name="e3_no_items_found">موردی یافت نشد</string>
+    <string name="e3_clear_filters">حذف فیلترها</string>
+
+    <!-- Compact load-more footer (replaces raw exception text) -->
+    <string name="e3_load_more_failed">بارگذاری موارد بیشتر ناموفق بود</string>
+
+    <!-- Country screen -->
+    <string name="e3_country_fallback">کشور</string>
+    <string name="e3_advanced_filters_cd">فیلترهای پیشرفته</string>
+    <string name="e3_min_imdb_label">حداقل امتیاز IMDb: %1$s</string>
+    <string name="e3_min_user_rating_label">حداقل امتیاز کاربران: %1$s</string>
+    <string name="e3_max_runtime_label">حداکثر مدت زمان</string>
+    <string name="e3_runtime_any">همه</string>
+    <string name="e3_runtime_up_to">تا %1$d دقیقه</string>
+
+    <!-- Person search -->
+    <string name="e3_search_failed">جستجو ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+</resources>

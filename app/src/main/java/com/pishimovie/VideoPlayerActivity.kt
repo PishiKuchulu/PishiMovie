@@ -24,6 +24,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -53,7 +54,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
@@ -66,11 +66,11 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -86,12 +86,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
@@ -107,12 +112,16 @@ import com.pishimovie.data.model.SubtitleSettings
 import com.pishimovie.data.model.VideoPlayerSettings
 import com.pishimovie.data.model.WatchedEpisode
 import com.pishimovie.player.PlayerViewModel
+import com.pishimovie.player.QualityMode
 import com.pishimovie.player.SubtitleManager
 import com.pishimovie.player.TrackManager
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
+import com.pishimovie.utils.SubtitleSettingsStorage
 import com.pishimovie.ui.theme.FontManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import android.media.AudioManager
 import android.provider.Settings as AndroidSettings
 import android.util.TypedValue
@@ -210,6 +219,17 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var movieId: Int? = null
     private var resumePosition: Long = 0L
 
+    // ── Chrome state mirrored from the Compose screen ─────────────────────
+    // onKeyDown lives at Activity level but must respect the on-screen
+    // chrome: D-pad left/right belong to the focus system while controls
+    // are visible, and BACK must not exit while the player is locked. The
+    // screen reports both states through onChromeStateChanged.
+    @Volatile private var playerControlsVisible = true
+    @Volatile private var playerLocked = false
+
+    /** Incremented when BACK is pressed while locked; the screen observes it and shows the unlock affordance. */
+    private val unlockSignal = MutableStateFlow(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -243,6 +263,12 @@ class VideoPlayerActivity : AppCompatActivity() {
                 VideoPlayerScreen(
                     viewModel = viewModel,
                     videoUrl = videoUrl!!,
+                    title = videoTitle,
+                    unlockSignal = unlockSignal,
+                    onChromeStateChanged = { controlsVisible, locked ->
+                        playerControlsVisible = controlsVisible
+                        playerLocked = locked
+                    },
                     onBack = { finish() },
                     onPip = { enterPipIfPossible() },
                 )
@@ -256,11 +282,21 @@ class VideoPlayerActivity : AppCompatActivity() {
         if (DeviceUtils.isTv(this)) overridePendingTransition(0, 0)
     }
 
+    /** PiP aspect ratio from the actual video size when known (16:9 fallback). */
+    private fun pipAspectRatio(): android.util.Rational {
+        val videoSize = viewModel.player?.videoSize
+        return if (videoSize != null && videoSize.width > 0 && videoSize.height > 0) {
+            android.util.Rational(videoSize.width, videoSize.height)
+        } else {
+            android.util.Rational(16, 9)
+        }
+    }
+
     private fun enterPipIfPossible() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 val params = PictureInPictureParams.Builder()
-                    .setAspectRatio(android.util.Rational(16, 9))
+                    .setAspectRatio(pipAspectRatio())
                     .build()
                 enterPictureInPictureMode(params)
             } catch (_: Exception) {
@@ -274,7 +310,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && viewModel.player?.isPlaying == true) {
             try {
                 val params = PictureInPictureParams.Builder()
-                    .setAspectRatio(android.util.Rational(16, 9))
+                    .setAspectRatio(pipAspectRatio())
                     .build()
                 enterPictureInPictureMode(params)
             } catch (_: Exception) {}
@@ -291,9 +327,27 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
             android.view.KeyEvent.KEYCODE_MEDIA_PLAY -> { p.playWhenReady = true; return true }
             android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> { p.playWhenReady = false; return true }
-            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> { viewModel.seekRelative(-10000); return true }
-            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> { viewModel.seekRelative(10000); return true }
-            android.view.KeyEvent.KEYCODE_BACK -> { finish(); return true }
+            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                // While the controls are visible (or the player is locked),
+                // left/right belong to the focus system so the user can move
+                // between the on-screen controls; the seek shortcut only
+                // applies while the chrome is hidden.
+                if (playerLocked || playerControlsVisible) return super.onKeyDown(keyCode, event)
+                viewModel.seekRelative(-10000); return true
+            }
+            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (playerLocked || playerControlsVisible) return super.onKeyDown(keyCode, event)
+                viewModel.seekRelative(10000); return true
+            }
+            android.view.KeyEvent.KEYCODE_BACK -> {
+                if (playerLocked) {
+                    // Locked: don't exit — ask the screen to show the unlock
+                    // affordance instead.
+                    unlockSignal.value += 1
+                    return true
+                }
+                finish(); return true
+            }
         }
         return super.onKeyDown(keyCode, event)
     }
@@ -360,6 +414,9 @@ class VideoPlayerActivity : AppCompatActivity() {
 private fun VideoPlayerScreen(
     viewModel: PlayerViewModel,
     videoUrl: String,
+    title: String?,
+    unlockSignal: StateFlow<Int>,
+    onChromeStateChanged: (controlsVisible: Boolean, locked: Boolean) -> Unit,
     onBack: () -> Unit,
     onPip: () -> Unit,
 ) {
@@ -374,7 +431,8 @@ private fun VideoPlayerScreen(
     val isBuffering by viewModel.isBuffering.collectAsState()
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val tracks by viewModel.tracks.collectAsState()
-    val showSkipIntro by viewModel.showSkipIntro.collectAsState()
+    val showForwardChip by viewModel.showForwardChip.collectAsState()
+    val qualityMode by viewModel.qualityMode.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
@@ -383,6 +441,25 @@ private fun VideoPlayerScreen(
     var isSeeking by remember { mutableStateOf(false) }
     var seekProgress by remember { mutableFloatStateOf(0f) }
 
+    // Focus: whenever the controls appear, the Play/Pause button takes
+    // initial focus so D-pad navigation has a visible starting point.
+    val playFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(showControls, isLocked, playerError) {
+        if (showControls && !isLocked && playerError == null) {
+            runCatching { playFocusRequester.requestFocus() }
+        }
+    }
+
+    // Mirror chrome state to the Activity (D-pad seek gating + locked BACK).
+    LaunchedEffect(showControls, isLocked) {
+        onChromeStateChanged(showControls, isLocked)
+    }
+    // BACK pressed while locked → reveal the unlock affordance.
+    val unlockTick by unlockSignal.collectAsState()
+    LaunchedEffect(unlockTick) {
+        if (unlockTick > 0 && isLocked) showControls = true
+    }
+
     // Gesture state
     var brightness by remember { mutableFloatStateOf(-1f) }
     var volume by remember { mutableFloatStateOf(-1f) }
@@ -390,16 +467,32 @@ private fun VideoPlayerScreen(
     var showVolumeIndicator by remember { mutableStateOf(false) }
     var gestureStartY by remember { mutableFloatStateOf(0f) }
     var gestureStartValue by remember { mutableFloatStateOf(0f) }
+    // Which side the current drag started on (brightness = left, volume = right);
+    // the target is fixed at drag start so crossing the middle doesn't flip it.
+    var gestureIsBrightness by remember { mutableStateOf(true) }
+
+    // Double-tap seek indicator ("+30s" / "−30s" with a direction icon)
+    var seekIndicatorText by remember { mutableStateOf<String?>(null) }
+    var seekIndicatorForward by remember { mutableStateOf(true) }
+    LaunchedEffect(seekIndicatorText) {
+        if (seekIndicatorText != null) {
+            delay(800)
+            seekIndicatorText = null
+        }
+    }
 
     val videoPlayerSettings = remember(context) {
         try { StorageUtils.loadVideoPlayerSettings(context) } catch (_: Exception) { VideoPlayerSettings.DEFAULT }
     }
     // Subtitle settings are lifecycle-aware: reloaded on every resume so the
     // user sees their changes immediately after returning from
-    // SubtitleSettingsActivity (no need to restart playback).
+    // SubtitleSettingsActivity (no need to restart playback). The EFFECTIVE
+    // settings are loaded — global settings merged with this video's
+    // per-video overrides. The settings UI keys overrides by URL (mediaId is
+    // always ""), so the player reads with "" to hit the same keys.
     var subtitleSettings by remember(context) {
         mutableStateOf(
-            try { StorageUtils.loadSubtitleSettings(context) } catch (_: Exception) { SubtitleSettings.getDefaultSettings(context) }
+            try { SubtitleSettingsStorage.effectiveSettingsFor(context, videoUrl, "") } catch (_: Exception) { SubtitleSettings.getDefaultSettings(context) }
         )
     }
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -407,7 +500,7 @@ private fun VideoPlayerScreen(
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 subtitleSettings = try {
-                    StorageUtils.loadSubtitleSettings(context)
+                    SubtitleSettingsStorage.effectiveSettingsFor(context, videoUrl, "")
                 } catch (_: Exception) {
                     SubtitleSettings.getDefaultSettings(context)
                 }
@@ -444,9 +537,9 @@ private fun VideoPlayerScreen(
         } catch (_: Exception) { brightness = 0.5f }
     }
 
-    // Auto-hide controls
-    LaunchedEffect(showControls, isPlaying, isLocked) {
-        if (showControls && isPlaying && !isLocked) {
+    // Auto-hide controls (never while the user is dragging the seek bar)
+    LaunchedEffect(showControls, isPlaying, isLocked, isSeeking) {
+        if (showControls && isPlaying && !isLocked && !isSeeking) {
             delay(3000)
             showControls = false
         }
@@ -470,10 +563,15 @@ private fun VideoPlayerScreen(
                 detectTapGestures(
                     onDoubleTap = { offset ->
                         val half = size.width / 2
+                        val seekSeconds = videoPlayerSettings.seekTimeSeconds
                         if (offset.x < half) {
-                            viewModel.seekRelative(-videoPlayerSettings.seekTimeSeconds * 1000L)
+                            viewModel.seekRelative(-seekSeconds * 1000L)
+                            seekIndicatorForward = false
+                            seekIndicatorText = "−${seekSeconds}s"
                         } else {
-                            viewModel.seekRelative(videoPlayerSettings.seekTimeSeconds * 1000L)
+                            viewModel.seekRelative(seekSeconds * 1000L)
+                            seekIndicatorForward = true
+                            seekIndicatorText = "+${seekSeconds}s"
                         }
                     },
                     onTap = { showControls = !showControls },
@@ -484,7 +582,8 @@ private fun VideoPlayerScreen(
                 detectDragGestures(
                     onDragStart = { offset ->
                         gestureStartY = offset.y
-                        if (offset.x < size.width / 2) {
+                        gestureIsBrightness = offset.x < size.width / 2
+                        if (gestureIsBrightness) {
                             gestureStartValue = brightness
                             showBrightnessIndicator = true
                         } else {
@@ -492,10 +591,15 @@ private fun VideoPlayerScreen(
                             showVolumeIndicator = true
                         }
                     },
-                    onDrag = { change, dragAmount ->
-                        val delta = -dragAmount.y / size.height.toFloat()
-                        val newValue = (gestureStartValue + delta).coerceIn(0f, 1f)
-                        if (change.position.x < size.width / 2) {
+                    onDrag = { change, _ ->
+                        // The fraction is computed from the TOTAL distance
+                        // dragged since the gesture started (start Y vs the
+                        // current Y) applied to the value captured at drag
+                        // start — not from each event's own little delta,
+                        // which made the value jitter around the start point.
+                        val totalDelta = (gestureStartY - change.position.y) / size.height.toFloat()
+                        val newValue = (gestureStartValue + totalDelta).coerceIn(0f, 1f)
+                        if (gestureIsBrightness) {
                             brightness = newValue
                             applyBrightness(context, newValue)
                         } else {
@@ -508,7 +612,36 @@ private fun VideoPlayerScreen(
     ) {
         if (p == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.initializing_player), color = Color.White, modifier = Modifier.padding(16.dp))
+                if (playerError != null) {
+                    // Prepare itself failed (no player exists yet) — show the
+                    // error here, since the main error overlay below only
+                    // exists once a player does. Retry re-runs prepare from
+                    // the ViewModel's stored arguments.
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(56.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(stringResource(R.string.playback_error), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(playerError ?: "", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            androidx.compose.material3.Button(onClick = { viewModel.retry() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.retry))
+                            }
+                            androidx.compose.material3.OutlinedButton(onClick = onBack) {
+                                Text(stringResource(R.string.back))
+                            }
+                        }
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(stringResource(R.string.initializing_player), color = Color.White, modifier = Modifier.padding(16.dp))
+                    }
+                }
             }
             return@Box
         }
@@ -570,16 +703,25 @@ private fun VideoPlayerScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(stringResource(R.string.retry))
                         }
-                        androidx.compose.material3.OutlinedButton(onClick = {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(videoUrl))
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.open_in_browser))
+                        // "Open in browser" is only useful for direct media
+                        // files: an adaptive manifest (.m3u8/.mpd) does
+                        // nothing in a browser, and the raw stream URL can
+                        // carry tokens that should not leak into browser
+                        // history — so the option is hidden for manifests.
+                        val isAdaptiveManifest = videoUrl.substringBefore('?').substringBefore('#')
+                            .let { it.endsWith(".m3u8", ignoreCase = true) || it.endsWith(".mpd", ignoreCase = true) }
+                        if (!isAdaptiveManifest) {
+                            androidx.compose.material3.OutlinedButton(onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(videoUrl))
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.open_in_browser))
+                            }
                         }
                     }
                 }
@@ -593,9 +735,12 @@ private fun VideoPlayerScreen(
             }
         }
 
-        // ── Skip Intro ────────────────────────────────────────────────────
+        // ── Quick forward (+30s) ──────────────────────────────────────────
+        // A plain seek shortcut offered early in the video. (It is NOT a
+        // "skip intro" feature — there is no intro-range data — so it is
+        // labeled honestly with exactly what it does.)
         AnimatedVisibility(
-            visible = showSkipIntro && !isLocked,
+            visible = showForwardChip && !isLocked,
             enter = if (isTv) EnterTransition.None else fadeIn() + scaleIn(),
             exit = if (isTv) ExitTransition.None else fadeOut() + scaleOut(),
             modifier = Modifier.align(Alignment.BottomEnd),
@@ -609,10 +754,20 @@ private fun VideoPlayerScreen(
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.skip_intro), color = Color.White, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(Icons.Default.Forward10, contentDescription = "Skip", tint = Color.White, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.e5_forward_30_seconds), color = Color.White, fontWeight = FontWeight.Bold)
             }
+        }
+
+        // ── Double-tap seek indicator ─────────────────────────────────────
+        AnimatedVisibility(
+            visible = seekIndicatorText != null,
+            enter = if (isTv) EnterTransition.None else fadeIn(),
+            exit = if (isTv) ExitTransition.None else fadeOut(),
+        ) {
+            GestureIndicator(
+                icon = if (seekIndicatorForward) Icons.AutoMirrored.Filled.Forward else Icons.Default.Replay,
+                text = seekIndicatorText ?: "",
+            )
         }
 
         // ── Brightness / Volume indicators ────────────────────────────────
@@ -633,30 +788,53 @@ private fun VideoPlayerScreen(
 
         // ── Controls overlay ──────────────────────────────────────────────
         if (showControls && !isLocked && playerError == null) {
+            // Whether a subtitle track is currently active (for the top-bar
+            // subtitle button's state tint).
+            val subtitleActive = tracks.groups.any { group ->
+                group.type == C.TRACK_TYPE_TEXT && group.isSelected
+            }
             Column(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
                 // Top bar
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape)) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape)) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Color.White)
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { isLocked = true; showControls = false }, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape)) {
+                    // Title of the playing video/episode.
+                    if (!title.isNullOrBlank()) {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    IconButton(onClick = { isLocked = true; showControls = false }, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape)) {
                         Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.lock), tint = Color.White)
                     }
-                    IconButton(onClick = onPip, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape)) {
+                    IconButton(onClick = onPip, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape)) {
                         Icon(Icons.Default.PictureInPicture, contentDescription = stringResource(R.string.pip), tint = Color.White)
                     }
                     // Subtitle Settings — opens SubtitleSettingsActivity in
-                    // per-video mode for the current video URL.
+                    // per-video mode for the current video URL. The tint
+                    // reflects whether a subtitle track is active.
                     IconButton(
                         onClick = {
                             com.pishimovie.SubtitleSettingsActivity.startForVideo(context, videoUrl)
                         },
-                        modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape),
+                        modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape),
                     ) {
-                        Icon(Icons.Default.Subtitles, contentDescription = stringResource(R.string.subtitle_settings), tint = Color.White)
+                        Icon(
+                            Icons.Default.Subtitles,
+                            contentDescription = stringResource(R.string.subtitle_settings),
+                            tint = if (subtitleActive) MaterialTheme.colorScheme.primary else Color.White,
+                        )
                     }
-                    IconButton(onClick = { showTrackDialog = true }, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape)) {
+                    IconButton(onClick = { showTrackDialog = true }, modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape)) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = Color.White)
                     }
                 }
@@ -665,38 +843,46 @@ private fun VideoPlayerScreen(
                 Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                     IconButton(
                         onClick = { viewModel.playPause() },
-                        modifier = Modifier.size(64.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape),
+                        modifier = Modifier.size(64.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                            .focusRequester(playFocusRequester).playerFocusRing(CircleShape),
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            contentDescription = if (isPlaying) stringResource(R.string.e5_pause) else stringResource(R.string.play),
                             tint = Color.White,
                             modifier = Modifier.size(32.dp),
                         )
                     }
                 }
 
-                // Bottom controls
+                // Bottom controls — the seek bar always stays visible; while
+                // buffering, the center spinner (already shown) is the only
+                // indicator, and while dragging, the slider + time label
+                // follow the drag and preview the destination time.
                 Column(modifier = Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.7f)).padding(16.dp)) {
-                    if (isBuffering) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
-                    } else {
-                        Slider(
-                            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
-                            onValueChange = { progress ->
-                                isSeeking = true
-                                seekProgress = progress
-                            },
-                            onValueChangeFinished = {
-                                val newPosition = (seekProgress * duration).toLong()
-                                viewModel.seekTo(newPosition)
-                                isSeeking = false
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    Slider(
+                        value = when {
+                            isSeeking -> seekProgress
+                            duration > 0 -> currentPosition.toFloat() / duration.toFloat()
+                            else -> 0f
+                        },
+                        onValueChange = { progress ->
+                            isSeeking = true
+                            seekProgress = progress
+                        },
+                        onValueChangeFinished = {
+                            val newPosition = (seekProgress * duration).toLong()
+                            viewModel.seekTo(newPosition)
+                            isSeeking = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            formatTime(if (isSeeking) (seekProgress * duration).toLong() else currentPosition),
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                         Spacer(modifier = Modifier.weight(1f))
                         // Speed selector
                         Box {
@@ -708,7 +894,7 @@ private fun VideoPlayerScreen(
                                     .clickable { showSpeedDropdown = true }
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                             ) {
-                                Icon(Icons.Default.Speed, contentDescription = "Speed", tint = Color.White, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Speed, contentDescription = stringResource(R.string.playback_speed), tint = Color.White, modifier = Modifier.size(20.dp))
                                 Text(
                                     text = String.format("%.2fx", playbackSpeed),
                                     color = Color.White,
@@ -720,7 +906,7 @@ private fun VideoPlayerScreen(
                             DropdownMenu(expanded = showSpeedDropdown, onDismissRequest = { showSpeedDropdown = false }) {
                                 listOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f).forEach { speed ->
                                     DropdownMenuItem(
-                                        text = { Text(String.format("%.2fx", speed), color = if (speed == playbackSpeed) MaterialTheme.colorScheme.primary else Color.White) },
+                                        text = { Text(String.format("%.2fx", speed), color = if (speed == playbackSpeed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
                                         onClick = { viewModel.setPlaybackSpeed(speed); showSpeedDropdown = false },
                                     )
                                 }
@@ -742,7 +928,7 @@ private fun VideoPlayerScreen(
                 ) {
                     IconButton(
                         onClick = { isLocked = false; showControls = true },
-                        modifier = Modifier.padding(top = 48.dp).size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape),
+                        modifier = Modifier.padding(top = 48.dp).size(48.dp).background(Color.Black.copy(alpha = 0.7f), CircleShape).playerFocusRing(CircleShape),
                     ) {
                         Icon(Icons.Default.LockOpen, contentDescription = stringResource(R.string.unlock), tint = Color.White)
                     }
@@ -756,10 +942,33 @@ private fun VideoPlayerScreen(
                 tracks = tracks,
                 trackSelector = viewModel.playerManager?.trackSelector,
                 trackManager = viewModel.trackManager,
+                qualityMode = qualityMode,
+                onQualityModeSelected = { viewModel.setQualityMode(it) },
+                onTrackSelected = { viewModel.onTrackSelected(it) },
                 onDismiss = { showTrackDialog = false },
             )
         }
     }
+}
+
+/**
+ * Visible focus state for the player's chrome buttons (D-pad navigation):
+ * a light overlay + white ring while the control holds focus.
+ */
+@Composable
+private fun Modifier.playerFocusRing(shape: Shape): Modifier {
+    var focused by remember { mutableStateOf(false) }
+    return this
+        .onFocusChanged { focused = it.isFocused }
+        .then(
+            if (focused) {
+                Modifier
+                    .background(Color.White.copy(alpha = 0.30f), shape)
+                    .border(2.dp, Color.White, shape)
+            } else {
+                Modifier
+            }
+        )
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -790,6 +999,9 @@ private fun TrackSelectionDialog(
     tracks: Tracks,
     trackSelector: DefaultTrackSelector?,
     trackManager: TrackManager,
+    qualityMode: QualityMode,
+    onQualityModeSelected: (QualityMode) -> Unit,
+    onTrackSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val audioTracks = remember(tracks) { trackManager.getAudioTracks(tracks) }
@@ -801,13 +1013,14 @@ private fun TrackSelectionDialog(
         title = { Text(stringResource(R.string.tracks_quality), style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                // Video quality
+                // Video quality — chips mirror the ViewModel's quality mode,
+                // which is the same state applied to the track selector.
                 if (videoTracks.isNotEmpty()) {
                     Text(stringResource(R.string.quality), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
-                        androidx.compose.material3.FilterChip(selected = false, onClick = { trackManager.autoQuality(trackSelector) }, label = { Text(stringResource(R.string.auto_quality)) })
-                        androidx.compose.material3.FilterChip(selected = false, onClick = { trackManager.forceHighestQuality(trackSelector) }, label = { Text(stringResource(R.string.highest_quality)) })
-                        androidx.compose.material3.FilterChip(selected = false, onClick = { trackManager.forceLowestQuality(trackSelector) }, label = { Text(stringResource(R.string.lowest_quality)) })
+                        androidx.compose.material3.FilterChip(selected = qualityMode == QualityMode.AUTO, onClick = { onQualityModeSelected(QualityMode.AUTO) }, label = { Text(stringResource(R.string.auto_quality)) })
+                        androidx.compose.material3.FilterChip(selected = qualityMode == QualityMode.HIGHEST, onClick = { onQualityModeSelected(QualityMode.HIGHEST) }, label = { Text(stringResource(R.string.highest_quality)) })
+                        androidx.compose.material3.FilterChip(selected = qualityMode == QualityMode.LOWEST, onClick = { onQualityModeSelected(QualityMode.LOWEST) }, label = { Text(stringResource(R.string.lowest_quality)) })
                     }
                 }
                 // Audio tracks
@@ -817,6 +1030,8 @@ private fun TrackSelectionDialog(
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable {
                                 trackManager.selectAudioTrack(trackSelector, tracks, track.groupIndex, track.trackIndex)
+                                // Persist per video (restored on next playback).
+                                onTrackSelected("audio:embedded:${track.groupIndex}:${track.trackIndex}")
                             }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -830,7 +1045,11 @@ private fun TrackSelectionDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(stringResource(R.string.subtitles), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { trackManager.disableSubtitles(trackSelector) }.padding(vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            trackManager.disableSubtitles(trackSelector)
+                            // Persist "off" per video ("embedded:-1:-1").
+                            onTrackSelected("embedded:-1:-1")
+                        }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(stringResource(R.string.off), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -840,6 +1059,8 @@ private fun TrackSelectionDialog(
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable {
                                 trackManager.selectSubtitleTrack(trackSelector, tracks, track.groupIndex, track.trackIndex)
+                                // Persist per video (SubtitlePerVideo key format).
+                                onTrackSelected("embedded:${track.groupIndex}:${track.trackIndex}")
                             }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

@@ -8,6 +8,7 @@ import com.pishimovie.data.model.Poster
 import com.pishimovie.data.model.SearchResult
 import com.pishimovie.data.model.Source
 import com.pishimovie.util.NetworkUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -17,6 +18,15 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
+
+/**
+ * Thrown when a search cannot run because the device is offline AND no
+ * cached result exists for the query. Distinct from "the search succeeded
+ * and found nothing" (an empty [SearchResult]) so the UI can show an
+ * offline message instead of a misleading «no results» state.
+ */
+class OfflineException(message: String = "Device is offline and no cached result is available") :
+    Exception(message)
 
 class SearchRepository : BaseRepository() {
     private val BASE_URL = com.pishimovie.BuildConfig.API_BASE_URL + "/search"
@@ -31,6 +41,9 @@ class SearchRepository : BaseRepository() {
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
 
                 parseSearchResult(jsonData)
+            } catch (e: CancellationException) {
+                // Never wrap cancellation into a generic error.
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error searching: ${e.message}", e)
             }
@@ -53,8 +66,9 @@ class SearchRepository : BaseRepository() {
         val isOnline = NetworkUtils.isOnline(context)
 
         if (!isOnline) {
-            // Offline — return cached result or empty
-            return cache.getSearchResult(query) ?: SearchResult(emptyList())
+            // Offline — serve the cached result if there is one; otherwise
+            // signal "offline" explicitly instead of faking an empty result.
+            return cache.getSearchResult(query) ?: throw OfflineException()
         }
 
         return try {
@@ -62,6 +76,10 @@ class SearchRepository : BaseRepository() {
             // Cache the successful result for offline reuse
             cache.putSearchResult(query, result)
             result
+        } catch (e: CancellationException) {
+            // Cancellation is not a network failure — never fall back to
+            // cache or write state for a search the caller abandoned.
+            throw e
         } catch (e: Exception) {
             // Network failure — fall back to cache
             cache.getSearchResult(query) ?: throw e

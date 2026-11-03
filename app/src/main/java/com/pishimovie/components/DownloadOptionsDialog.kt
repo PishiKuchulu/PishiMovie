@@ -17,13 +17,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.pishimovie.R
 import com.pishimovie.data.model.Source
+import com.pishimovie.utils.DownloadUtils
 
 @Composable
 fun DownloadOptionsDialog(
@@ -37,6 +40,25 @@ fun DownloadOptionsDialog(
     onOpenInKMPlayer: () -> Unit,
     onPlayInternal: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val notInstalledSuffix = " (${stringResource(R.string.e4_not_installed)})"
+
+    // Options whose target app is missing are disabled and labelled instead
+    // of failing silently after the tap. Browser / copy-link / internal
+    // playback are always available.
+    val admInstalled = remember(context) {
+        DownloadUtils.isAnyPackageInstalled(context, DownloadUtils.ADM_PACKAGES)
+    }
+    val vlcInstalled = remember(context) {
+        DownloadUtils.isPackageInstalled(context, DownloadUtils.VLC_PACKAGE)
+    }
+    val mxInstalled = remember(context) {
+        DownloadUtils.isAnyPackageInstalled(context, DownloadUtils.MX_PACKAGES)
+    }
+    val kmInstalled = remember(context) {
+        DownloadUtils.isAnyPackageInstalled(context, DownloadUtils.KM_PACKAGES)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -89,6 +111,7 @@ fun DownloadOptionsDialog(
                         onDownloadWithADM()
                         onDismiss()
                     },
+                    enabled = admInstalled,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -96,7 +119,10 @@ fun DownloadOptionsDialog(
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 ) {
-                    Text(stringResource(R.string.download_with_adm))
+                    Text(
+                        text = stringResource(R.string.download_with_adm) +
+                            if (admInstalled) "" else notInstalledSuffix
+                    )
                 }
                 
                 Button(
@@ -152,6 +178,7 @@ fun DownloadOptionsDialog(
                         onOpenInVLC()
                         onDismiss()
                     },
+                    enabled = vlcInstalled,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -159,7 +186,10 @@ fun DownloadOptionsDialog(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    Text(stringResource(R.string.open_in_vlc))
+                    Text(
+                        text = stringResource(R.string.open_in_vlc) +
+                            if (vlcInstalled) "" else notInstalledSuffix
+                    )
                 }
                 
                 Button(
@@ -167,6 +197,7 @@ fun DownloadOptionsDialog(
                         onOpenInMXPlayer()
                         onDismiss()
                     },
+                    enabled = mxInstalled,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -174,7 +205,10 @@ fun DownloadOptionsDialog(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    Text(stringResource(R.string.open_in_mx_player))
+                    Text(
+                        text = stringResource(R.string.open_in_mx_player) +
+                            if (mxInstalled) "" else notInstalledSuffix
+                    )
                 }
                 
                 Button(
@@ -182,6 +216,7 @@ fun DownloadOptionsDialog(
                         onOpenInKMPlayer()
                         onDismiss()
                     },
+                    enabled = kmInstalled,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
@@ -189,7 +224,10 @@ fun DownloadOptionsDialog(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    Text(stringResource(R.string.open_in_km_player))
+                    Text(
+                        text = stringResource(R.string.open_in_km_player) +
+                            if (kmInstalled) "" else notInstalledSuffix
+                    )
                 }
             }
         },

@@ -3,6 +3,7 @@ package com.pishimovie.data.cache
 import com.pishimovie.BuildConfig
 import com.pishimovie.util.PLog
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -47,7 +48,9 @@ internal fun sha256Hex(input: String): String {
  *    cache if available (enables offline browsing — Phase 6: "Offline
  *    search", "Sync when online again")
  *
- * Debug logs redact the API key from logged URLs.
+ * Debug logs never contain a full URL: the API key is redacted and the
+ * query string is stripped entirely (log scheme + host + path only), so
+ * user search terms and signed-URL tokens never reach logcat.
  *
  * The cache is safe for concurrent access (synchronized).
  */
@@ -62,9 +65,15 @@ class ApiResponseCache private constructor(private val context: Context) {
         context.cacheDir.resolve("pishi_api_cache").apply { mkdirs() }
     }
 
-    /** Redacts the API key from a URL before it is written to logcat. */
+    /**
+     * Makes a URL safe for logcat: redacts the API key (it travels in the
+     * path for this backend) and strips the query string and fragment
+     * entirely — only scheme + host + path are ever logged.
+     */
     private fun redact(url: String): String =
         url.replace(BuildConfig.API_KEY, "***")
+            .substringBefore('?')
+            .substringBefore('#')
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -137,6 +146,10 @@ class ApiResponseCache private constructor(private val context: Context) {
         } catch (e: HttpStatusException) {
             // HTTP error responses propagate to the caller; only genuine
             // transport failures below may fall back to the disk cache.
+            throw e
+        } catch (e: CancellationException) {
+            // Cancellation is NOT a network failure: it must propagate, not
+            // be masked by serving a (possibly stale) disk body.
             throw e
         } catch (e: Exception) {
             PLog.w(tag, "Network failure for ${redact(url)} — falling back to disk cache", e)

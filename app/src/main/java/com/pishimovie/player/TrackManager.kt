@@ -18,6 +18,10 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
  *
  * Uses [DefaultTrackSelector] parameters — no direct ExoPlayer API calls.
  */
+
+/** Quality selection modes surfaced by the player's track dialog. */
+enum class QualityMode { AUTO, HIGHEST, LOWEST }
+
 class TrackManager {
 
     data class TrackInfo(
@@ -158,5 +162,14 @@ class TrackManager {
                 .setForceHighestSupportedBitrate(false)
                 .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
         )
+    }
+
+    /** Applies a [QualityMode] (the single entry point used by the dialog chips). */
+    fun applyQualityMode(trackSelector: DefaultTrackSelector?, mode: QualityMode) {
+        when (mode) {
+            QualityMode.AUTO -> autoQuality(trackSelector)
+            QualityMode.HIGHEST -> forceHighestQuality(trackSelector)
+            QualityMode.LOWEST -> forceLowestQuality(trackSelector)
+        }
     }
 }

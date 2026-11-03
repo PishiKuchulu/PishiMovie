@@ -7,8 +7,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlin.coroutines.coroutineContext
 
 /** A newer signed release published on GitHub, with the APK for this device. */
@@ -18,6 +20,10 @@ data class AppUpdateInfo(
     val apkName: String,
     val downloadUrl: String,
     val sizeBytes: Long,
+    /** Download URL of the release's `<apkName>.sha256` asset, or null when
+     *  the release does not publish one (verification then falls back to
+     *  the size check only). */
+    val sha256Url: String? = null,
 )
 
 /**
@@ -32,6 +38,7 @@ data class AppUpdateInfo(
  */
 object AppUpdateChecker {
 
+    private const val TAG = "AppUpdateChecker"
     private const val RELEASES_URL =
         "https://api.github.com/repos/PishiKuchulu/PishiMovie/releases?per_page=20"
     private const val USER_AGENT = "PishiMovie-Updater"
@@ -50,17 +57,34 @@ object AppUpdateChecker {
                 if (!VersionNumbers.isNewer(version, currentVersion)) continue
                 val current = best
                 if (current != null && !VersionNumbers.isNewer(version, current.version)) continue
-                val asset = pickAsset(rel.optJSONArray("assets"), version, abi) ?: continue
+                val assets = rel.optJSONArray("assets")
+                val asset = pickAsset(assets, version, abi) ?: continue
+                val apkName = asset.optString("name")
                 best = AppUpdateInfo(
                     version = version,
                     tag = tag,
-                    apkName = asset.optString("name"),
+                    apkName = apkName,
                     downloadUrl = asset.optString("browser_download_url"),
                     sizeBytes = asset.optLong("size"),
+                    // The signed-release workflow publishes "<apk>.sha256"
+                    // next to each APK; used to verify the download.
+                    sha256Url = findAssetUrl(assets, "$apkName.sha256"),
                 )
             }
             best
         }
+
+    /** browser_download_url of the asset named [name], or null if absent. */
+    private fun findAssetUrl(assets: JSONArray?, name: String): String? {
+        if (assets == null) return null
+        for (j in 0 until assets.length()) {
+            val asset = assets.optJSONObject(j) ?: continue
+            if (asset.optString("name") == name) {
+                return asset.optString("browser_download_url").takeIf { it.isNotBlank() }
+            }
+        }
+        return null
+    }
 
     private fun pickAsset(assets: JSONArray?, version: String, abi: String): JSONObject? {
         if (assets == null) return null
@@ -76,18 +100,26 @@ object AppUpdateChecker {
     }
 
     /**
-     * Downloads [url] to [dest] (via a `.part` sibling, renamed on success),
-     * reporting (downloaded, total) progress. Cancellation lands between
-     * chunks; a cancelled or failed attempt only leaves the `.part` file,
-     * which the caller removes.
+     * Downloads [info]'s APK to [dest] (via a `.part` sibling), reporting
+     * (downloaded, total) progress, then VERIFIES the result before it may
+     * be installed:
+     *  1. the byte count must equal the release metadata's [AppUpdateInfo.sizeBytes];
+     *  2. when the release publishes a `.sha256` asset ([AppUpdateInfo.sha256Url]),
+     *     the file's SHA-256 must match it (a listed-but-unreadable or
+     *     malformed checksum fails the download — never silently skipped);
+     *  3. with no `.sha256` asset, the size check alone applies (logged).
+     * Any mismatch deletes the file and throws [IOException] with the
+     * reason, which the controller surfaces as its Failed state.
+     * Cancellation lands between chunks; a cancelled or failed attempt
+     * only leaves the `.part` file, which the caller removes.
      */
     suspend fun download(
-        url: String,
+        info: AppUpdateInfo,
         dest: File,
         onProgress: (downloaded: Long, total: Long) -> Unit,
     ) {
         withContext(Dispatchers.IO) {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            val conn = (URL(info.downloadUrl).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = true
                 connectTimeout = 30_000
                 readTimeout = 60_000
@@ -100,10 +132,10 @@ object AppUpdateChecker {
                 val total = conn.contentLengthLong
                 dest.parentFile?.mkdirs()
                 val part = File(dest.parentFile, dest.name + ".part")
+                var downloaded = 0L
                 conn.inputStream.use { input ->
                     part.outputStream().use { out ->
                         val buffer = ByteArray(64 * 1024)
-                        var downloaded = 0L
                         while (true) {
                             coroutineContext.ensureActive()
                             val n = input.read(buffer)
@@ -114,12 +146,54 @@ object AppUpdateChecker {
                         }
                     }
                 }
+                // (1) Size integrity — a truncated or padded stream must
+                // never reach the installer.
+                if (info.sizeBytes > 0 && downloaded != info.sizeBytes) {
+                    part.delete()
+                    throw IOException(
+                        "Update size mismatch: expected ${info.sizeBytes} bytes, got $downloaded"
+                    )
+                }
                 if (dest.exists()) dest.delete()
                 check(part.renameTo(dest)) { "Could not finalize the downloaded update" }
+                // (2)/(3) Hash integrity against the release checksum asset.
+                val sha256Url = info.sha256Url
+                if (sha256Url != null) {
+                    val expected = runCatching { httpGet(sha256Url) }.getOrNull()
+                        ?.trim()
+                        ?.split(Regex("\\s+"))
+                        ?.firstOrNull()
+                        ?.lowercase()
+                        ?.takeIf { it.matches(Regex("[0-9a-f]{64}")) }
+                    if (expected == null) {
+                        dest.delete()
+                        throw IOException("Could not verify the update (checksum unreadable)")
+                    }
+                    if (sha256HexOfFile(dest) != expected) {
+                        dest.delete()
+                        throw IOException("Update integrity check failed (SHA-256 mismatch)")
+                    }
+                } else {
+                    PLog.w(TAG, "Release publishes no .sha256 asset; update verified by size only")
+                }
             } finally {
                 conn.disconnect()
             }
         }
+    }
+
+    /** Streaming SHA-256 hex digest of [file]. */
+    private fun sha256HexOfFile(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                digest.update(buffer, 0, n)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xFF) }
     }
 
     private fun httpGet(url: String): String {

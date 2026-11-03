@@ -5,6 +5,7 @@ import com.pishimovie.data.model.FilterType
 import com.pishimovie.data.model.Genre
 import com.pishimovie.data.model.Movie
 import com.pishimovie.data.model.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -24,6 +25,8 @@ class MovieRepository : BaseRepository() {
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
                 
                 parseMovies(jsonData)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching movies: ${e.message}", e)
             }

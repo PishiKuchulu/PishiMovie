@@ -8,6 +8,31 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Release-signing guard: the release build type falls back to the debug
+// signing config when the keystore file is absent, which would silently
+// ship a "release" APK signed with the public debug key (anyone could
+// re-sign a modified APK and Android would accept it as an update).
+// When a Release task is actually requested and the keystore is missing,
+// fail loudly instead. Debug-only invocations are completely unaffected.
+run {
+    val requestedTasks = gradle.startParameter.taskNames
+    if (requestedTasks.any { it.contains("Release") }) {
+        val keystorePropertiesFile = rootProject.file("key.properties")
+        val keystoreProperties = Properties()
+        if (keystorePropertiesFile.exists()) {
+            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        }
+        val storeFilePath = keystoreProperties.getProperty("storeFile") ?: "keystore/debug.keystore"
+        if (!file(storeFilePath).exists()) {
+            throw GradleException(
+                "Release build requested but the signing keystore was not found: " +
+                    "${file(storeFilePath)} (key.properties 'storeFile'). " +
+                    "Refusing to silently fall back to the debug signing key."
+            )
+        }
+    }
+}
+
 android {
     namespace = "com.pishimovie"
     compileSdk = 35
@@ -18,8 +43,8 @@ android {
         // Android 7.0 (API 23) and earlier are not supported
         minSdk = 24
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.1"
+        versionCode = 6
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

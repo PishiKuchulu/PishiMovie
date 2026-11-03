@@ -1,6 +1,7 @@
 package com.pishimovie.data.repository
 
 import com.pishimovie.data.model.Country
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -16,6 +17,8 @@ class CountryRepository : BaseRepository() {
                 val url = "$BASE_URL/$API_KEY/"
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
                 parseCountries(jsonData)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching countries: ${e.message}", e)
             }

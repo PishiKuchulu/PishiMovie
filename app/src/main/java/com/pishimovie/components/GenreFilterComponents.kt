@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -124,6 +125,16 @@ fun FilterTypeSelector(
                     onClick = {
                         onFilterTypeSelected(FilterType.DEFAULT)
                         expanded = false
+                    },
+                    trailingIcon = {
+                        if (selectedFilterType == FilterType.DEFAULT) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 )
                 DropdownMenuItem(
@@ -131,6 +142,16 @@ fun FilterTypeSelector(
                     onClick = {
                         onFilterTypeSelected(FilterType.BY_YEAR)
                         expanded = false
+                    },
+                    trailingIcon = {
+                        if (selectedFilterType == FilterType.BY_YEAR) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 )
                 DropdownMenuItem(
@@ -138,6 +159,16 @@ fun FilterTypeSelector(
                     onClick = {
                         onFilterTypeSelected(FilterType.BY_IMDB)
                         expanded = false
+                    },
+                    trailingIcon = {
+                        if (selectedFilterType == FilterType.BY_IMDB) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 )
             }
@@ -203,15 +234,35 @@ fun GenreSelector(
                     onClick = {
                         onGenreSelected(0)
                         expanded = false
+                    },
+                    trailingIcon = {
+                        if (selectedGenreId == 0) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 )
-                
+
                 genres.forEach { genre ->
                     DropdownMenuItem(
                         text = { Text(genre.title) },
                         onClick = {
                             onGenreSelected(genre.id)
                             expanded = false
+                        },
+                        trailingIcon = {
+                            if (selectedGenreId == genre.id) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     )
                 }

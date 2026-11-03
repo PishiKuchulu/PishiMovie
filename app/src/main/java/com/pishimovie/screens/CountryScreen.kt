@@ -9,13 +9,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,24 +34,36 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +76,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,13 +88,20 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.pishimovie.R
+import com.pishimovie.data.model.Country
 import com.pishimovie.data.model.FilterType
+import com.pishimovie.data.model.Genre
 import com.pishimovie.data.model.Poster
+import com.pishimovie.navigation.navigateSafe
+import com.pishimovie.ui.components.PishiChip
 import com.pishimovie.ui.country.CountryViewModel
 import com.pishimovie.ui.theme.rememberReducedMotion
 import com.pishimovie.ui.theme.rememberShimmerSweepOrStatic
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun CountryScreen(
@@ -93,6 +122,8 @@ fun CountryScreen(
     val selectedFilterType = viewModel.selectedFilterType
     val selectedContentType = viewModel.selectedContentType
 
+    var showFilterSheet by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -111,7 +142,7 @@ fun CountryScreen(
             }
 
             Text(
-                text = countryName,
+                text = countryName.ifBlank { stringResource(R.string.e3_country_fallback) },
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier
                     .weight(1f)
@@ -140,6 +171,16 @@ fun CountryScreen(
                             onClick = {
                                 viewModel.selectFilterType(FilterType.DEFAULT)
                                 filterMenuExpanded = false
+                            },
+                            trailingIcon = {
+                                if (selectedFilterType == FilterType.DEFAULT) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         )
                         DropdownMenuItem(
@@ -147,6 +188,16 @@ fun CountryScreen(
                             onClick = {
                                 viewModel.selectFilterType(FilterType.BY_YEAR)
                                 filterMenuExpanded = false
+                            },
+                            trailingIcon = {
+                                if (selectedFilterType == FilterType.BY_YEAR) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         )
                         DropdownMenuItem(
@@ -154,9 +205,34 @@ fun CountryScreen(
                             onClick = {
                                 viewModel.selectFilterType(FilterType.BY_IMDB)
                                 filterMenuExpanded = false
+                            },
+                            trailingIcon = {
+                                if (selectedFilterType == FilterType.BY_IMDB) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         )
                     }
+                }
+
+                // Extended filters sheet (min IMDb/rating, year, genre,
+                // language, runtime) — applied client-side by the VM.
+                IconButton(onClick = { showFilterSheet = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = stringResource(R.string.e3_advanced_filters_cd),
+                        tint = if (viewModel.hasActiveExtendedFilters) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
@@ -227,6 +303,15 @@ fun CountryScreen(
                         onRetry = { viewModel.retry() }
                     )
                 }
+                !isLoading && posters.isEmpty() -> {
+                    // Load succeeded but returned nothing (e.g. the extended
+                    // filters exclude everything) — a real empty state
+                    // instead of a blank grid.
+                    CountryEmptyState(
+                        hasActiveFilters = viewModel.hasActiveExtendedFilters,
+                        onClearFilters = { viewModel.clearExtendedFilters() }
+                    )
+                }
                 else -> {
                     CountryPosterGrid(
                         posters = posters,
@@ -239,6 +324,61 @@ fun CountryScreen(
                         navController = navController
                     )
                 }
+            }
+        }
+
+        if (showFilterSheet) {
+            CountryFilterSheet(
+                genres = viewModel.genres,
+                countries = viewModel.countries,
+                initialMinImdb = viewModel.filterMinImdb,
+                initialMinRating = viewModel.filterMinRating,
+                initialYearFrom = viewModel.filterYearFrom,
+                initialYearTo = viewModel.filterYearTo,
+                initialGenre = viewModel.filterGenre,
+                initialLanguage = viewModel.filterLanguage,
+                initialMaxRuntime = viewModel.filterMaxRuntime,
+                onApply = { minImdb, minRating, yearFrom, yearTo, genre, language, maxRuntime ->
+                    viewModel.applyExtendedFilters(
+                        minImdb, minRating, yearFrom, yearTo, genre, language, maxRuntime
+                    )
+                    showFilterSheet = false
+                },
+                onDismiss = { showFilterSheet = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun CountryEmptyState(
+    hasActiveFilters: Boolean,
+    onClearFilters: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.e3_no_items_found),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        if (hasActiveFilters) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onClearFilters) {
+                Text(stringResource(R.string.e3_clear_filters))
             }
         }
     }
@@ -256,12 +396,16 @@ private fun SegmentedControlButton(
 ) {
     Box(
         modifier = modifier
-            .height(40.dp)
+            .height(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isSelected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
+            .semantics {
+                role = Role.Tab
+                selected = isSelected
+            }
             .clickable { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
@@ -364,7 +508,7 @@ fun CountryShimmerPosterItem(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .aspectRatio(2f / 3f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(brush)
             )
@@ -437,7 +581,8 @@ fun CountryPosterGrid(
 ) {
     val postersList = posters.toList()
     val context = LocalContext.current
-    
+    val scope = rememberCoroutineScope()
+
     val columns = DeviceUtils.getGridColumns(LocalContext.current.resources)
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
@@ -446,18 +591,23 @@ fun CountryPosterGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(postersList) { index, poster ->            
+        itemsIndexed(postersList, key = { _, poster -> poster.id }) { index, poster ->
             CountryPosterItem(
                 poster = poster,
                 onClick = {
-                    if (poster.isMovie()) {
-                        // Save movie to storage and navigate to single movie screen
-                        StorageUtils.saveMovieToFile(context, poster.toMovie())
-                        navController?.navigate("single_movie/${poster.id}")
-                    } else if (poster.isSeries()) {
-                        // Save series to storage and navigate to single series screen
-                        StorageUtils.saveSeriesToFile(context, poster.toSeries())
-                        navController?.navigate("single_series/${poster.id}")
+                    // Save the detail file off the click thread, then navigate.
+                    scope.launch {
+                        if (poster.isMovie()) {
+                            withContext(Dispatchers.IO) {
+                                StorageUtils.saveMovieToFile(context, poster.toMovie())
+                            }
+                            navController?.navigateSafe("single_movie/${poster.id}")
+                        } else if (poster.isSeries()) {
+                            withContext(Dispatchers.IO) {
+                                StorageUtils.saveSeriesToFile(context, poster.toSeries())
+                            }
+                            navController?.navigateSafe("single_series/${poster.id}")
+                        }
                     }
                 }
             )
@@ -558,7 +708,6 @@ fun CountryPosterItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(310.dp) // Fixed height for all cards
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -568,7 +717,7 @@ fun CountryPosterItem(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(12.dp)
         ) {
             // Poster image with rating overlay
@@ -583,7 +732,7 @@ fun CountryPosterItem(
                     contentDescription = poster.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .aspectRatio(2f / 3f)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
@@ -651,10 +800,8 @@ fun CountryPosterItem(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Poster details with weight to fill remaining space
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            // Poster details
+            Column {
                 Text(
                     text = poster.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -779,6 +926,220 @@ fun CountryErrorItem(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.retry))
+            }
+        }
+    }
+}
+
+/**
+ * Extended-filters sheet for the country page, modeled on the search
+ * filter sheet: edits a local working copy and applies it in one go.
+ * The values map 1:1 to CountryViewModel's client-side filter fields.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun CountryFilterSheet(
+    genres: List<Genre>,
+    countries: List<Country>,
+    initialMinImdb: Double,
+    initialMinRating: Double,
+    initialYearFrom: Int,
+    initialYearTo: Int,
+    initialGenre: String?,
+    initialLanguage: String?,
+    initialMaxRuntime: Int,
+    onApply: (minImdb: Double, minRating: Double, yearFrom: Int, yearTo: Int, genre: String?, language: String?, maxRuntime: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var minImdb by remember { mutableFloatStateOf(initialMinImdb.toFloat()) }
+    var minRating by remember { mutableFloatStateOf(initialMinRating.toFloat()) }
+    var yearFrom by remember { mutableIntStateOf(initialYearFrom) }
+    var yearTo by remember { mutableIntStateOf(initialYearTo) }
+    var genre by remember { mutableStateOf(initialGenre) }
+    var language by remember { mutableStateOf(initialLanguage) }
+    var maxRuntime by remember { mutableIntStateOf(initialMaxRuntime) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .imePadding(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Header with reset
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.filters),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                TextButton(onClick = {
+                    minImdb = 0f
+                    minRating = 0f
+                    yearFrom = 1900
+                    yearTo = 2100
+                    genre = null
+                    language = null
+                    maxRuntime = 0
+                }) {
+                    Text(stringResource(R.string.reset), color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            // Minimum IMDb rating
+            Text(
+                text = stringResource(R.string.e3_min_imdb_label, String.format("%.1f", minImdb)),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Slider(
+                value = minImdb,
+                onValueChange = { minImdb = it },
+                valueRange = 0f..10f,
+                steps = 19, // 0.5 steps
+            )
+
+            // Minimum user rating
+            Text(
+                text = stringResource(R.string.e3_min_user_rating_label, String.format("%.1f", minRating)),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Slider(
+                value = minRating,
+                onValueChange = { minRating = it },
+                valueRange = 0f..10f,
+                steps = 19, // 0.5 steps
+            )
+
+            // Year range
+            Text(
+                text = stringResource(R.string.year_range, yearFrom, yearTo),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            RangeSlider(
+                value = yearFrom.toFloat()..yearTo.toFloat(),
+                onValueChange = { range ->
+                    yearFrom = range.start.toInt()
+                    yearTo = range.endInclusive.toInt()
+                },
+                valueRange = 1900f..2100f,
+            )
+
+            // Genre (single selection, matched against poster genre titles)
+            if (genres.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.genres),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PishiChip(
+                        text = stringResource(R.string.all_genres),
+                        selected = genre == null,
+                        onClick = { genre = null }
+                    )
+                    genres.forEach { g ->
+                        PishiChip(
+                            text = g.title,
+                            selected = genre == g.title,
+                            onClick = { genre = g.title }
+                        )
+                    }
+                }
+            }
+
+            // Language (matched against poster countries, like SearchFilters)
+            if (countries.isNotEmpty()) {
+                Text(
+                    text = "${stringResource(R.string.language)} / ${stringResource(R.string.country_label)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PishiChip(
+                        text = stringResource(R.string.language_any),
+                        selected = language == null,
+                        onClick = { language = null }
+                    )
+                    countries.forEach { country ->
+                        PishiChip(
+                            text = country.title,
+                            selected = language == country.title,
+                            onClick = { language = country.title }
+                        )
+                    }
+                }
+            }
+
+            // Maximum runtime
+            Text(
+                text = stringResource(R.string.e3_max_runtime_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PishiChip(
+                    text = stringResource(R.string.e3_runtime_any),
+                    selected = maxRuntime == 0,
+                    onClick = { maxRuntime = 0 }
+                )
+                listOf(90, 120, 150, 180).forEach { minutes ->
+                    PishiChip(
+                        text = stringResource(R.string.e3_runtime_up_to, minutes),
+                        selected = maxRuntime == minutes,
+                        onClick = { maxRuntime = minutes }
+                    )
+                }
+            }
+
+            // Apply button
+            Button(
+                onClick = {
+                    onApply(
+                        minImdb.toDouble(),
+                        minRating.toDouble(),
+                        yearFrom,
+                        yearTo,
+                        genre,
+                        language,
+                        maxRuntime
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+            ) {
+                Text(stringResource(R.string.apply_filters), fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -16,8 +16,13 @@ object NetworkUtils {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val network = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(network) ?: return false
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            // NET_CAPABILITY_VALIDATED is the ideal fast path, but some
+            // networks (certain ISPs / captive setups) never pass the
+            // system's validation while internet genuinely works. Requiring
+            // VALIDATED made those users look permanently "offline" (and
+            // e.g. search silently served only stale cache) — so INTERNET
+            // alone counts as online and the real request is the judge.
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         } else {
             @Suppress("DEPRECATION")
             val info = cm.activeNetworkInfo

@@ -10,6 +10,7 @@ import com.pishimovie.data.model.SearchFilters
 import com.pishimovie.data.model.SearchHistoryEntry
 import com.pishimovie.data.repository.CountryRepository
 import com.pishimovie.data.repository.GenreRepository
+import com.pishimovie.data.repository.OfflineException
 import com.pishimovie.data.repository.SearchHistoryRepository
 import com.pishimovie.data.repository.SearchRepository
 import com.pishimovie.utils.LanguageUtils
@@ -17,10 +18,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -76,6 +80,26 @@ class SearchViewModel : ViewModel() {
     private var rawCacheValid: Boolean = false
     private var referenceDataLoaded: Boolean = false
 
+    /**
+     * Single-flight guard for [fetchRaw]: the suggestions job (200 ms) and
+     * the search job (450 ms) must never run the same query's network fetch
+     * concurrently (double traffic + last-writer-wins on the raw cache).
+     * Serializing here makes "one query = at most one in-flight fetch" —
+     * the second caller either hits the populated cache or fetches its own
+     * (different) query right after.
+     */
+    private val fetchMutex = Mutex()
+
+    private companion object {
+        /** Shown when the device is offline and nothing is cached. */
+        const val SEARCH_ERROR_OFFLINE =
+            "دستگاه آفلاین است؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید."
+
+        /** Shown for any other search failure (never a raw exception text). */
+        const val SEARCH_ERROR_GENERIC =
+            "خطا در جستجو؛ لطفاً دوباره تلاش کنید."
+    }
+
     /** Must be called once when the screen composes — passes the app context. */
     fun initialize(context: Context) {
         appContext = context.applicationContext
@@ -85,7 +109,7 @@ class SearchViewModel : ViewModel() {
             // History file read off the main thread.
             viewModelScope.launch {
                 val history = withContext(Dispatchers.IO) { repo.getAll() }
-                _uiState.value = _uiState.value.copy(history = history)
+                _uiState.update { it.copy(history = history) }
             }
         }
         loadGenresAndCountries(context)
@@ -98,7 +122,7 @@ class SearchViewModel : ViewModel() {
             val genres = runCatching { genreRepo.getGenres() }.getOrDefault(emptyList())
             val countries = runCatching { countryRepo.getAllCountries() }.getOrDefault(emptyList())
             if (genres.isEmpty() && countries.isEmpty()) referenceDataLoaded = false
-            _uiState.value = _uiState.value.copy(genres = genres, countries = countries)
+            _uiState.update { it.copy(genres = genres, countries = countries) }
         }
     }
 
@@ -107,9 +131,9 @@ class SearchViewModel : ViewModel() {
      * once per query: whichever job (suggestions / full search) runs first
      * populates the cache, the other reuses it.
      */
-    private suspend fun fetchRaw(query: String): List<Poster> {
+    private suspend fun fetchRaw(query: String): List<Poster> = fetchMutex.withLock {
         if (rawCacheValid && query == lastRawQuery) {
-            return _uiState.value.rawResults
+            return@withLock _uiState.value.rawResults
         }
         val ctx = appContext
         val raw = if (ctx != null) searchRepo.searchWithCache(ctx, query)
@@ -117,24 +141,26 @@ class SearchViewModel : ViewModel() {
         val base = raw.posters.filter { LanguageUtils.shouldDisplayTitle(it.title) }
         lastRawQuery = query
         rawCacheValid = true
-        _uiState.value = _uiState.value.copy(rawResults = base)
-        return base
+        _uiState.update { it.copy(rawResults = base) }
+        base
     }
 
     fun updateQuery(query: String) {
-        _uiState.value = _uiState.value.copy(query = query, errorMessage = null)
+        _uiState.update { it.copy(query = query, errorMessage = null) }
         if (query.isBlank()) {
             suggestionJob?.cancel()
             searchJob?.cancel()
             lastRawQuery = null
             rawCacheValid = false
-            _uiState.value = _uiState.value.copy(
-                suggestions = emptyList(),
-                results = emptyList(),
-                rawResults = emptyList(),
-                isSearching = false,
-                hasSearched = false,
-            )
+            _uiState.update {
+                it.copy(
+                    suggestions = emptyList(),
+                    results = emptyList(),
+                    rawResults = emptyList(),
+                    isSearching = false,
+                    hasSearched = false,
+                )
+            }
             return
         }
         // Suggestions — light debounce (fetch is shared with the full search)
@@ -144,7 +170,7 @@ class SearchViewModel : ViewModel() {
             runCatching {
                 fetchRaw(query).take(5)
             }.onSuccess { suggestions ->
-                _uiState.value = _uiState.value.copy(suggestions = suggestions)
+                _uiState.update { it.copy(suggestions = suggestions) }
             }
         }
         // Instant search — heavier debounce
@@ -167,34 +193,43 @@ class SearchViewModel : ViewModel() {
     }
 
     private suspend fun performSearch(query: String, commitHistory: Boolean) {
-        _uiState.value = _uiState.value.copy(isSearching = true, errorMessage = null)
+        _uiState.update { it.copy(isSearching = true, errorMessage = null) }
         try {
             val base = fetchRaw(query)
             // Apply user filters first
             val filtered = _uiState.value.filters.apply(base, _uiState.value.genres)
             // Better ranking: score each result by query relevance
             val ranked = rankResults(filtered, query)
-            _uiState.value = _uiState.value.copy(
-                results = ranked,
-                suggestions = emptyList(),
-                isSearching = false,
-                hasSearched = true,
-            )
+            _uiState.update {
+                it.copy(
+                    results = ranked,
+                    suggestions = emptyList(),
+                    isSearching = false,
+                    hasSearched = true,
+                )
+            }
             if (commitHistory) {
                 val repo = historyRepo
                 if (repo != null) {
                     // History file write off the main thread.
                     val updated = withContext(Dispatchers.IO) { repo.add(query); repo.getAll() }
-                    _uiState.value = _uiState.value.copy(history = updated)
+                    _uiState.update { it.copy(history = updated) }
                 }
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: OfflineException) {
+            // Offline with nothing cached: say so, instead of showing an
+            // empty result list that reads as «no matches».
+            _uiState.update {
+                it.copy(isSearching = false, errorMessage = SEARCH_ERROR_OFFLINE)
+            }
         } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(
-                isSearching = false,
-                errorMessage = e.message ?: "Search failed",
-            )
+            // Localized category message — never the raw exception text
+            // (it can carry internal URLs/host details).
+            _uiState.update {
+                it.copy(isSearching = false, errorMessage = SEARCH_ERROR_GENERIC)
+            }
         }
     }
 
@@ -236,11 +271,11 @@ class SearchViewModel : ViewModel() {
     fun selectSuggestion(poster: Poster) {
         // Navigate directly to detail — clear suggestions, and record the
         // pick in history like a committed search.
-        _uiState.value = _uiState.value.copy(suggestions = emptyList())
+        _uiState.update { it.copy(suggestions = emptyList()) }
         val repo = historyRepo ?: return
         viewModelScope.launch {
             val updated = withContext(Dispatchers.IO) { repo.add(poster.title); repo.getAll() }
-            _uiState.value = _uiState.value.copy(history = updated)
+            _uiState.update { it.copy(history = updated) }
         }
     }
 
@@ -249,21 +284,23 @@ class SearchViewModel : ViewModel() {
         searchJob?.cancel()
         lastRawQuery = null
         rawCacheValid = false
-        _uiState.value = _uiState.value.copy(
-            query = "",
-            suggestions = emptyList(),
-            results = emptyList(),
-            rawResults = emptyList(),
-            hasSearched = false,
-            errorMessage = null,
-        )
+        _uiState.update {
+            it.copy(
+                query = "",
+                suggestions = emptyList(),
+                results = emptyList(),
+                rawResults = emptyList(),
+                hasSearched = false,
+                errorMessage = null,
+            )
+        }
     }
 
     fun removeHistoryEntry(query: String) {
         val repo = historyRepo ?: return
         viewModelScope.launch {
             val updated = withContext(Dispatchers.IO) { repo.remove(query); repo.getAll() }
-            _uiState.value = _uiState.value.copy(history = updated)
+            _uiState.update { it.copy(history = updated) }
         }
     }
 
@@ -271,17 +308,17 @@ class SearchViewModel : ViewModel() {
         val repo = historyRepo ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { repo.clearAll() }
-            _uiState.value = _uiState.value.copy(history = emptyList())
+            _uiState.update { it.copy(history = emptyList()) }
         }
     }
 
     fun selectHistoryEntry(query: String) {
-        _uiState.value = _uiState.value.copy(query = query)
+        _uiState.update { it.copy(query = query) }
         submitSearch()
     }
 
     fun updateFilters(filters: SearchFilters) {
-        _uiState.value = _uiState.value.copy(filters = filters)
+        _uiState.update { it.copy(filters = filters) }
         // Re-apply filters LOCALLY to the last fetched raw results — no
         // network round-trip (works offline too). Only when we have never
         // fetched for the current query do we fall back to a real search.
@@ -290,7 +327,7 @@ class SearchViewModel : ViewModel() {
             if (q.isNotBlank()) {
                 if (rawCacheValid && q == lastRawQuery) {
                     val filtered = filters.apply(_uiState.value.rawResults, _uiState.value.genres)
-                    _uiState.value = _uiState.value.copy(results = rankResults(filtered, q))
+                    _uiState.update { it.copy(results = rankResults(filtered, q)) }
                 } else {
                     searchJob?.cancel()
                     searchJob = viewModelScope.launch {

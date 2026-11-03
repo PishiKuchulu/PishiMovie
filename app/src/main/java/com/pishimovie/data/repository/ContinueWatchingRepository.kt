@@ -3,6 +3,7 @@ package com.pishimovie.data.repository
 import com.pishimovie.util.PLog
 import android.content.Context
 import com.pishimovie.data.model.ContinueWatchingItem
+import com.pishimovie.utils.StorageUtils
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -74,15 +75,20 @@ class ContinueWatchingRepository(private val context: Context) {
     }
 
     fun clearAll() {
-        try {
-            File(context.filesDir, fileName).delete()
-        } catch (e: Exception) {
-            PLog.e(tag, "Error clearing continue-watching", e)
+        // Take the same lock as save/remove: an unsynchronized delete can be
+        // undone by an in-flight save that read the list before the delete
+        // and writes it back afterwards.
+        synchronized(lock) {
+            try {
+                File(context.filesDir, fileName).delete()
+            } catch (e: Exception) {
+                PLog.e(tag, "Error clearing continue-watching", e)
+            }
         }
     }
 
     private fun write(items: List<ContinueWatchingItem>) {
         val file = File(context.filesDir, fileName)
-        file.writeText(json.encodeToString(items))
+        StorageUtils.atomicWriteText(file, json.encodeToString(items))
     }
 }

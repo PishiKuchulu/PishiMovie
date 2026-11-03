@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by Engineer E4 (detail screens fix wave).
+     Kept in a separate file so parallel fix waves do not collide in strings.xml. -->
+<resources>
+    <!-- Detail screens: no-source status (SingleMovieScreen / SingleSeriesScreen) -->
+    <string name="e4_no_source_available">منبعی برای پخش یا دانلود موجود نیست</string>
+    <string name="e4_episode_no_source">بدون سورس</string>
+
+    <!-- User rating row -->
+    <string name="e4_your_rating">امتیاز شما</string>
+
+    <!-- Player/download dialogs: player not installed -->
+    <string name="e4_not_installed">نصب نیست</string>
+
+    <!-- Series detail: load states -->
+    <string name="e4_series_load_error">بارگذاری سریال انجام نشد؛ دوباره تلاش کنید.</string>
+    <string name="e4_error_loading_seasons">خطا در بارگذاری فصل‌ها</string>
+
+    <!-- Share -->
+    <string name="e4_share_error">اشتراک‌گذاری انجام نشد</string>
+
+    <!-- DownloadUtils messages -->
+    <string name="e4_invalid_link">این لینک معتبر نیست و باز نمی‌شود</string>
+    <string name="e4_unable_to_open_link">باز کردن لینک ممکن نیست</string>
+    <string name="e4_link_copied">لینک کپی شد</string>
+    <string name="e4_adm_not_installed">برنامه ADM روی این دستگاه نصب نیست</string>
+    <string name="e4_vlc_not_installed">برنامه VLC روی این دستگاه نصب نیست</string>
+    <string name="e4_mx_not_installed">برنامه MX Player روی این دستگاه نصب نیست</string>
+    <string name="e4_km_not_installed">برنامه KMPlayer روی این دستگاه نصب نیست</string>
+</resources>

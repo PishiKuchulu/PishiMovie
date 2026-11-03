@@ -40,4 +40,28 @@ data class PishiDimens(
 
 val DefaultPishiDimens = PishiDimens()
 
+/**
+ * TV variant — same component tokens, roomier spacing scale for the 10-foot
+ * UI. Provided by the theme when [com.pishimovie.utils.DeviceUtils.isTv] is
+ * true; every other form factor keeps [DefaultPishiDimens] untouched.
+ */
+val TvPishiDimens = PishiDimens(
+    xxs = 3.dp,
+    xs = 6.dp,
+    sm = 12.dp,
+    md = 16.dp,
+    lg = 24.dp,
+    xl = 28.dp,
+    xxl = 32.dp,
+    xxxl = 40.dp,
+    huge = 56.dp,
+    massive = 72.dp,
+    cardPadding = 16.dp,
+    sectionSpacing = 32.dp,
+    sectionTitleBottom = 16.dp,
+    contentPadding = 24.dp,
+    interCardGap = 14.dp,
+    sectionHorizontalPadding = 24.dp,
+)
+
 val LocalPishiDimens = staticCompositionLocalOf { DefaultPishiDimens }

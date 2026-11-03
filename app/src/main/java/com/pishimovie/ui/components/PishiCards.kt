@@ -1,5 +1,6 @@
 package com.pishimovie.ui.components
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -82,7 +85,6 @@ fun PishiPosterCard(
     typeLabel: String? = null, // "Movie" / "Series"
     showMetadata: Boolean = true,
 ) {
-    val dimens = LocalPishiDimens.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val hovered by interaction.collectIsHoveredAsState()
@@ -115,18 +117,27 @@ fun PishiPosterCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(dimens.cardHeight),
+                // Poster area follows the card width at the natural 2:3
+                // poster ratio — previously a fixed 180dp height cropped
+                // inconsistently across the 120/140/160dp call-site widths.
+                .aspectRatio(2f / 3f),
         ) {
             // Poster image with signature 20dp corners
             Image(
                 painter = rememberAsyncImagePainter(
-                    ImageRequest.Builder(LocalContext.current)
+                    model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl.ifEmpty { null })
                         .size(420)
                         .crossfade(true)
-                        .build()
+                        .build(),
+                    // Placeholder/error surfaces so a loading or failed
+                    // poster is a tinted card, not a hole in the grid.
+                    placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                    error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
                 ),
-                contentDescription = title,
+                // null: the title Text below the poster already announces
+                // it — TalkBack previously heard the title twice per card.
+                contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(ShapeCardDefault)
@@ -224,23 +235,41 @@ fun PishiHeroCard(
     modifier: Modifier = Modifier,
     metadata: String? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary,
+    onHeroClick: (() -> Unit)? = null,
 ) {
     val dimens = LocalPishiDimens.current
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(dimens.heroHeight),
+            .height(dimens.heroHeight)
+            .then(
+                // Whole-hero tap target (e.g. open details) when the caller
+                // provides one; the Play/Details buttons keep their own
+                // click handling on top of it.
+                if (onHeroClick != null) Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    role = Role.Button,
+                ) { onHeroClick() } else Modifier
+            ),
     ) {
         // Backdrop
         Image(
             painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(LocalContext.current)
                     .data(imageUrl.ifEmpty { null })
-                    .size(420)
+                    // Full-width hero: 1280px decode (was 420px — visibly
+                    // blurry on TV/large phones) in full ARGB_8888 quality
+                    // instead of the loader-wide RGB_565 default.
+                    .size(1280)
+                    .bitmapConfig(Bitmap.Config.ARGB_8888)
                     .crossfade(true)
-                    .build()
+                    .build(),
+                placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                error = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
             ),
-            contentDescription = title,
+            // null: the headline Text below already announces the title.
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
@@ -325,17 +354,24 @@ fun PishiPlayButton(
     modifier: Modifier = Modifier,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.PlayArrow,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val hovered by interaction.collectIsHoveredAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
+        targetValue = when {
+            !enabled -> 1f
+            pressed -> 0.95f
+            hovered -> 1.04f  // same hover lift as PishiPosterCard
+            else -> 1f
+        },
         animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "play_btn_scale",
     )
 
     val isPishiTheme = accentColor == com.pishimovie.ui.theme.PishiColors.primary
-    val backgroundBrush = if (isPishiTheme) {
+    val backgroundBrush = if (isPishiTheme && enabled) {
         Brush.linearGradient(
             colors = listOf(
                 com.pishimovie.ui.theme.PishiColors.primary,
@@ -345,6 +381,8 @@ fun PishiPlayButton(
     } else {
         null
     }
+    val contentColor = (if (isPishiTheme) Color.Black else Color.White)
+        .copy(alpha = if (enabled) 1f else 0.55f)
 
     Row(
         modifier = modifier
@@ -352,9 +390,11 @@ fun PishiPlayButton(
             .clip(RoundedCornerShape(50))
             .then(
                 if (backgroundBrush != null) Modifier.background(backgroundBrush)
-                else Modifier.background(accentColor)
+                else Modifier.background(
+                    if (enabled) accentColor else accentColor.copy(alpha = 0.38f)
+                )
             )
-            .clickable(interaction, indication = null, role = Role.Button) { onClick() }
+            .clickable(interaction, indication = null, enabled = enabled, role = Role.Button) { onClick() }
             .sizeIn(minHeight = 48.dp)
             .padding(horizontal = 22.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -363,13 +403,13 @@ fun PishiPlayButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isPishiTheme) Color.Black else Color.White,
+            tint = contentColor,
             modifier = Modifier.size(20.dp),
         )
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (isPishiTheme) Color.Black else Color.White,
+            color = contentColor,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -384,26 +424,33 @@ fun PishiSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: @Composable (() -> Unit)? = null,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val hovered by interaction.collectIsHoveredAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
+        targetValue = when {
+            !enabled -> 1f
+            pressed -> 0.95f
+            hovered -> 1.04f  // same hover lift as PishiPosterCard
+            else -> 1f
+        },
         animationSpec = tvSpringOrSnap(),  // TV: snaps instead of spring-bouncing (see TvMotion).
         label = "secondary_btn_scale",
     )
-    
+
     val isPishiTheme = MaterialTheme.colorScheme.primary == com.pishimovie.ui.theme.PishiColors.primary
-    
+
     Row(
         modifier = modifier
             .scale(scale)
             .clip(RoundedCornerShape(50))
             .background(
-                if (isPishiTheme) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                else Color.White.copy(alpha = 0.15f)
+                if (isPishiTheme) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.6f else 0.3f)
+                else Color.White.copy(alpha = if (enabled) 0.15f else 0.08f)
             )
-            .clickable(interaction, indication = null, role = Role.Button) { onClick() }
+            .clickable(interaction, indication = null, enabled = enabled, role = Role.Button) { onClick() }
             .sizeIn(minHeight = 48.dp)
             .padding(horizontal = 22.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -413,7 +460,8 @@ fun PishiSecondaryButton(
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (isPishiTheme) MaterialTheme.colorScheme.onSurface else Color.White,
+            color = (if (isPishiTheme) MaterialTheme.colorScheme.onSurface else Color.White)
+                .copy(alpha = if (enabled) 1f else 0.55f),
             fontWeight = FontWeight.SemiBold,
         )
     }

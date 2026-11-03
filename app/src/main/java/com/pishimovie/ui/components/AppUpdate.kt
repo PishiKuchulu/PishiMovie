@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -86,6 +86,18 @@ class AppUpdateController(private val context: Context) {
     var state by mutableStateOf<State>(State.Idle)
         private set
 
+    /**
+     * True when the current [State.Failed] was produced by the DOWNLOAD
+     * phase (false = the version-check phase). The two failures read
+     * differently to the user, and the dialog's Retry re-runs the phase
+     * that actually failed.
+     */
+    var failureFromDownload by mutableStateOf(false)
+        private set
+
+    /** The update whose download last failed, so Retry can resume it. */
+    private var failedDownloadInfo: AppUpdateInfo? = null
+
     /** Set by the launch auto-check (when an update is found) and by the
      *  Settings card; the dialog host in MainScreen observes it. */
     var dialogRequested by mutableStateOf(false)
@@ -99,6 +111,7 @@ class AppUpdateController(private val context: Context) {
 
     fun check() {
         if (state is State.Checking || state is State.Downloading) return
+        failureFromDownload = false
         state = State.Checking
         scope.launch {
             state = try {
@@ -113,13 +126,25 @@ class AppUpdateController(private val context: Context) {
         }
     }
 
+    /** Re-runs whichever phase produced the current [State.Failed]. */
+    fun retryFailed() {
+        val info = failedDownloadInfo
+        if (failureFromDownload && info != null) {
+            download(info)
+        } else {
+            check()
+        }
+    }
+
     fun download(info: AppUpdateInfo) {
         if (state is State.Downloading) return
+        failureFromDownload = false
+        failedDownloadInfo = null
         val dest = File(File(context.cacheDir, "shared"), "pishimovie-update-${info.version}.apk")
         state = State.Downloading(info, 0L, info.sizeBytes)
         downloadJob = scope.launch {
             try {
-                AppUpdateChecker.download(info.downloadUrl, dest) { downloaded, total ->
+                AppUpdateChecker.download(info, dest) { downloaded, total ->
                     state = State.Downloading(info, downloaded, total)
                 }
                 state = State.Downloaded(info, dest)
@@ -128,6 +153,11 @@ class AppUpdateController(private val context: Context) {
                 state = State.Available(info)
             } catch (e: Exception) {
                 File(dest.parentFile, dest.name + ".part").delete()
+                // Mark the phase so the UI can say "download failed"
+                // (integrity/size reasons from the checker included)
+                // instead of the misleading "check failed".
+                failureFromDownload = true
+                failedDownloadInfo = info
                 state = State.Failed(e.message ?: "Download failed")
             }
         }
@@ -164,6 +194,43 @@ class AppUpdateController(private val context: Context) {
 @Composable
 fun AppUpdateDialog(controller: AppUpdateController, onDismiss: () -> Unit) {
     val state = controller.state
+
+    // Failure gets its own real branch: previously a Failed state made the
+    // dialog silently vanish (info == null → early return), leaving the
+    // user with no error and no way to retry.
+    if (state is AppUpdateController.State.Failed) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            icon = { Icon(Icons.Filled.SystemUpdate, null) },
+            title = { Text(stringResource(R.string.update_failed_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        if (controller.failureFromDownload) {
+                            stringResource(R.string.update_download_failed)
+                        } else {
+                            stringResource(R.string.update_check_failed)
+                        },
+                    )
+                    Text(
+                        state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { controller.retryFailed() }) {
+                    Text(stringResource(R.string.retry))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.later)) }
+            },
+        )
+        return
+    }
+
     val info = when (state) {
         is AppUpdateController.State.Available -> state.info
         is AppUpdateController.State.Downloading -> state.info
@@ -192,7 +259,7 @@ fun AppUpdateDialog(controller: AppUpdateController, onDismiss: () -> Unit) {
                             Text(stringResource(R.string.version_current), style = MaterialTheme.typography.labelSmall)
                             Text("v${controller.currentVersion}", style = MaterialTheme.typography.titleMedium)
                         }
-                        Icon(Icons.Filled.ArrowForward, null, Modifier.size(20.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(20.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.version_new), style = MaterialTheme.typography.labelSmall)
                             Text(
@@ -311,7 +378,13 @@ fun AppUpdateSettingsCard(controller: AppUpdateController) {
                 val statusText = when (state) {
                     is AppUpdateController.State.Checking -> stringResource(R.string.update_checking)
                     is AppUpdateController.State.UpToDate -> stringResource(R.string.up_to_date)
-                    is AppUpdateController.State.Failed -> stringResource(R.string.update_check_failed)
+                    is AppUpdateController.State.Failed ->
+                        // A download failure is not a check failure.
+                        if (controller.failureFromDownload) {
+                            stringResource(R.string.update_download_failed)
+                        } else {
+                            stringResource(R.string.update_check_failed)
+                        }
                     is AppUpdateController.State.Available -> "v${state.info.version}"
                     is AppUpdateController.State.Downloading ->
                         "${formatSize(state.downloaded)} / ${formatSize(state.total)}"

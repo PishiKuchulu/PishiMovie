@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.sp
  *
  * Key improvements:
  *  - Larger section titles (headlineSmall → 26sp)
- *  - Tighter letter-spacing on large text for premium feel
- *  - Slightly more open tracking on body for readability
+ *  - Zero letter-spacing on display/body/label styles — any tracking breaks
+ *    the joined strokes of the Persian (Arabic) script
  *  - Better line-height ratio (~1.35) across all sizes
  *  - Consistent font weights hierarchy
  *
@@ -36,7 +36,8 @@ fun pishiTypography(fontFamily: FontFamily? = null): Typography {
             fontWeight = FontWeight.Black,
             fontSize = 57.sp,
             lineHeight = 68.sp,
-            letterSpacing = (-1.0).sp,
+            // 0: letterSpacing breaks the joined strokes of Persian script.
+            letterSpacing = 0.sp,
         ),
         displayMedium = TextStyle(
             fontFamily = fam,
@@ -105,21 +106,21 @@ fun pishiTypography(fontFamily: FontFamily? = null): Typography {
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            letterSpacing = 0.5.sp,
+            letterSpacing = 0.sp,
         ),
         bodyMedium = TextStyle(
             fontFamily = fam,
             fontWeight = FontWeight.Normal,
             fontSize = 14.sp,
             lineHeight = 20.sp,
-            letterSpacing = 0.4.sp,
+            letterSpacing = 0.sp,
         ),
         bodySmall = TextStyle(
             fontFamily = fam,
             fontWeight = FontWeight.Normal,
             fontSize = 12.sp,
             lineHeight = 16.sp,
-            letterSpacing = 0.5.sp,
+            letterSpacing = 0.sp,
         ),
 
         // Label — chips, buttons, captions
@@ -128,21 +129,21 @@ fun pishiTypography(fontFamily: FontFamily? = null): Typography {
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
             lineHeight = 20.sp,
-            letterSpacing = 0.1.sp,
+            letterSpacing = 0.sp,
         ),
         labelMedium = TextStyle(
             fontFamily = fam,
             fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
             lineHeight = 16.sp,
-            letterSpacing = 0.5.sp,
+            letterSpacing = 0.sp,
         ),
         labelSmall = TextStyle(
             fontFamily = fam,
             fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp,
-            letterSpacing = 0.5.sp,
+            letterSpacing = 0.sp,
         ),
     )
 }

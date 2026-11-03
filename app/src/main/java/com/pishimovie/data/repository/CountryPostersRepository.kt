@@ -2,6 +2,7 @@ package com.pishimovie.data.repository
 
 import com.pishimovie.data.model.FilterType
 import com.pishimovie.data.model.Poster
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -19,6 +20,8 @@ class CountryPostersRepository : BaseRepository() {
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
                 
                 parsePosters(jsonData)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching posters for country $countryId: ${e.message}", e)
             }

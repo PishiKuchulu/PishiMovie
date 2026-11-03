@@ -9,6 +9,7 @@ import com.pishimovie.data.model.UserRating
 import com.pishimovie.data.model.WatchSession
 import com.pishimovie.data.model.WatchStatistics
 import com.pishimovie.data.model.WatchlistItem
+import com.pishimovie.utils.StorageUtils
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -46,7 +47,7 @@ class StatisticsRepository(private val context: Context) {
                 sessions.add(0, session)
                 // Keep last 500 sessions to bound storage
                 val trimmed = sessions.take(500)
-                sessionsFile.writeText(json.encodeToString(trimmed))
+                StorageUtils.atomicWriteText(sessionsFile, json.encodeToString(trimmed))
             } catch (e: Exception) {
                 PLog.e(tag, "Error recording session", e)
             }
@@ -55,6 +56,12 @@ class StatisticsRepository(private val context: Context) {
 
     /**
      * Convenience: record a session from the player's live state.
+     *
+     * [durationWatchedMs] is the time actually watched during this session
+     * (a delta — a resumed playback only counts the part watched now).
+     * [endPositionMs] is where playback ended inside the content and drives
+     * the [WatchSession.completed] flag; it defaults to [durationWatchedMs]
+     * for callers that track a from-zero session.
      */
     fun recordWatch(
         contentId: Int,
@@ -69,9 +76,10 @@ class StatisticsRepository(private val context: Context) {
         totalDurationMs: Long,
         startedAt: Long,
         finishedAt: Long = System.currentTimeMillis(),
+        endPositionMs: Long = durationWatchedMs,
     ): WatchSession {
         val completed = totalDurationMs > 0 &&
-            (durationWatchedMs.toFloat() / totalDurationMs.toFloat()) >= 0.9f
+            (endPositionMs.toFloat() / totalDurationMs.toFloat()) >= 0.9f
         val session = WatchSession(
             id = UUID.randomUUID().toString(),
             contentId = contentId,
@@ -104,7 +112,11 @@ class StatisticsRepository(private val context: Context) {
     }
 
     fun clearSessions() {
-        try { sessionsFile.delete() } catch (e: Exception) {}
+        // Same lock as recordSession, so a concurrent save cannot resurrect
+        // the sessions being cleared.
+        synchronized(sessionsLock) {
+            try { sessionsFile.delete() } catch (e: Exception) {}
+        }
     }
 
     // ─── Aggregated statistics ───────────────────────────────────────────
@@ -270,7 +282,7 @@ class StatisticsRepository(private val context: Context) {
                 val list = getWatchlist().toMutableList()
                 list.removeAll { it.id == item.id && it.type == item.type }
                 list.add(0, item)
-                watchlistFile.writeText(json.encodeToString(list))
+                StorageUtils.atomicWriteText(watchlistFile, json.encodeToString(list))
             } catch (e: Exception) {
                 PLog.e(tag, "Error adding to watchlist", e)
             }
@@ -282,7 +294,7 @@ class StatisticsRepository(private val context: Context) {
             try {
                 val list = getWatchlist().toMutableList()
                 list.removeAll { it.id == id && it.type == type }
-                watchlistFile.writeText(json.encodeToString(list))
+                StorageUtils.atomicWriteText(watchlistFile, json.encodeToString(list))
             } catch (e: Exception) {
                 PLog.e(tag, "Error removing from watchlist", e)
             }
@@ -311,7 +323,7 @@ class StatisticsRepository(private val context: Context) {
                 val ratings = getAllRatings().toMutableList()
                 ratings.removeAll { it.contentId == contentId && it.contentType == contentType }
                 ratings.add(0, UserRating(contentId, contentType, rating.coerceIn(1, 5)))
-                ratingsFile.writeText(json.encodeToString(ratings))
+                StorageUtils.atomicWriteText(ratingsFile, json.encodeToString(ratings))
             } catch (e: Exception) {
                 PLog.e(tag, "Error saving rating", e)
             }
@@ -337,7 +349,7 @@ class StatisticsRepository(private val context: Context) {
             try {
                 val ratings = getAllRatings().toMutableList()
                 ratings.removeAll { it.contentId == contentId && it.contentType == contentType }
-                ratingsFile.writeText(json.encodeToString(ratings))
+                StorageUtils.atomicWriteText(ratingsFile, json.encodeToString(ratings))
             } catch (e: Exception) {
                 PLog.e(tag, "Error removing rating", e)
             }

@@ -27,6 +27,7 @@ import coil.request.ImageRequest
 import com.pishimovie.ui.theme.CinematicPalette
 import com.pishimovie.ui.theme.PishiMotion
 import com.pishimovie.ui.theme.darken
+import com.pishimovie.ui.theme.rememberIsTv
 import com.pishimovie.ui.theme.rememberReducedMotion
 import com.pishimovie.ui.theme.tvTween
 
@@ -65,6 +66,10 @@ fun CinematicBackdrop(
     // benefit on a D-pad UI. The cinematic look (blur, gradients, vignette)
     // is fully kept.
     val reducedMotion = rememberReducedMotion()
+    // TV GPUs are weak and the backdrop is blurred anyway: cap the blur
+    // radius there instead of paying for a full 32dp RenderEffect.
+    val isTv = rememberIsTv()
+    val effectiveBlurRadius = if (isTv && blurRadius > 16.dp) 16.dp else blurRadius
     // Clamp parallax to [0,1]
     val clampedParallax = if (reducedMotion) 0f else parallaxOffset.coerceIn(0f, 1f)
 
@@ -84,6 +89,9 @@ fun CinematicBackdrop(
             painter = rememberAsyncImagePainter(
                 ImageRequest.Builder(context)
                     .data(imageUrl.ifEmpty { null })
+                    // Cap the decode at 1080px — the backdrop is blurred and
+                    // darkened, full-resolution decoding only wastes memory.
+                    .size(1080)
                     .crossfade(true)
                     .build()
             ),
@@ -93,7 +101,7 @@ fun CinematicBackdrop(
                 // Parallax translation via graphicsLayer (state-driven, updates every frame)
                 .graphicsLayer { translationY = -parallaxPx * clampedParallax }
                 .alpha(backdropAlpha)
-                .blur(blurRadius),
+                .blur(effectiveBlurRadius),
             contentScale = ContentScale.Crop,
         )
 

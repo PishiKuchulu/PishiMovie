@@ -237,9 +237,16 @@ object SubtitleSettingsStorage {
         patch: SubtitlePerVideo.() -> SubtitlePerVideo,
         mediaId: String = "",
     ) {
-        val current = loadPerVideo(context, videoUrl, mediaId)
-            ?: SubtitlePerVideo(videoUrl = videoUrl, mediaId = mediaId)
-        savePerVideo(context, current.patch(), mediaId)
+        // The whole load → patch → write cycle runs inside perVideoLock:
+        // reading the snapshot outside the lock let two concurrent merges
+        // (e.g. track selection in the player + an edit in the settings
+        // screen) overwrite each other with stale data. The lock is
+        // reentrant, so savePerVideo's own synchronized block is safe here.
+        synchronized(perVideoLock) {
+            val current = loadPerVideo(context, videoUrl, mediaId)
+                ?: SubtitlePerVideo(videoUrl = videoUrl, mediaId = mediaId)
+            savePerVideo(context, current.patch(), mediaId)
+        }
     }
 
     fun clearPerVideo(context: Context, videoUrl: String, mediaId: String = "") {

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,11 +38,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,10 +70,14 @@ import com.pishimovie.components.GenreFilterSection
 import com.pishimovie.data.model.Genre
 import com.pishimovie.data.model.Series
 import com.pishimovie.ui.series.SeriesViewModel
+import com.pishimovie.navigation.navigateSafe
 import com.pishimovie.ui.theme.rememberReducedMotion
 import com.pishimovie.ui.theme.rememberShimmerSweepOrStatic
 import com.pishimovie.utils.DeviceUtils
 import com.pishimovie.utils.StorageUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SeriesScreen(
@@ -112,6 +120,14 @@ fun SeriesScreen(
                     onRetry = { viewModel.retry() }
                 )
             }
+            !isLoading && series.isEmpty() -> {
+                // Load succeeded but returned nothing — a real empty state
+                // instead of a blank grid.
+                CatalogEmptyStateSeries(
+                    hasActiveFilters = viewModel.hasActiveFilters,
+                    onClearFilters = { viewModel.clearFilters() }
+                )
+            }
             else -> {
                 SeriesGrid(
                     series = series,
@@ -123,6 +139,40 @@ fun SeriesScreen(
                     onLoadMore = { viewModel.loadMoreSeries() },
                     navController = navController
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun CatalogEmptyStateSeries(
+    hasActiveFilters: Boolean,
+    onClearFilters: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.e3_no_items_found),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        if (hasActiveFilters) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onClearFilters) {
+                Text(stringResource(R.string.e3_clear_filters))
             }
         }
     }
@@ -215,7 +265,7 @@ fun ShimmerSeriesItem(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .aspectRatio(2f / 3f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(brush)
             )
@@ -288,7 +338,8 @@ fun SeriesGrid(
 ) {
     val seriesList = series.toList()
     val context = LocalContext.current
-    
+    val scope = rememberCoroutineScope()
+
     val columns = DeviceUtils.getGridColumns(LocalContext.current.resources)
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
@@ -297,14 +348,17 @@ fun SeriesGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(seriesList) { index, seriesItem ->
+        itemsIndexed(seriesList, key = { _, seriesItem -> seriesItem.id }) { index, seriesItem ->
             SeriesItem(
                 series = seriesItem,
                 onClick = {
-                    // Save series to storage
-                    StorageUtils.saveSeriesToFile(context, seriesItem)
-                    // Navigate to single series screen
-                    navController?.navigate("single_series/${seriesItem.id}")
+                    // Save the detail file off the click thread, then navigate.
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            StorageUtils.saveSeriesToFile(context, seriesItem)
+                        }
+                        navController?.navigateSafe("single_series/${seriesItem.id}")
+                    }
                 }
             )
             
@@ -333,7 +387,6 @@ fun SeriesGrid(
         if (errorMessage != null) {
             item {
                 ErrorItemSeries(
-                    errorMessage = errorMessage,
                     onRetry = onRetry
                 )
             }
@@ -404,7 +457,6 @@ fun SeriesItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(310.dp) // Fixed height for all cards
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -414,7 +466,7 @@ fun SeriesItem(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(12.dp)
         ) {
             // Series poster with rating overlay
@@ -429,7 +481,7 @@ fun SeriesItem(
                     contentDescription = series.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .aspectRatio(2f / 3f)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
@@ -450,7 +502,7 @@ fun SeriesItem(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Rating",
+                            contentDescription = null,
                             tint = Color.Yellow,
                             modifier = Modifier.size(16.dp)
                         )
@@ -467,10 +519,8 @@ fun SeriesItem(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Series details with weight to fill remaining space
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            // Series details
+            Column {
                 Text(
                     text = series.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -537,7 +587,7 @@ fun ErrorScreenSeries(
         ) {
             Icon(
                 imageVector = Icons.Default.Refresh,
-                contentDescription = "Retry",
+                contentDescription = stringResource(R.string.retry),
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -548,54 +598,31 @@ fun ErrorScreenSeries(
 
 @Composable
 fun ErrorItemSeries(
-    errorMessage: String,
     onRetry: () -> Unit
 ) {
-    Card(
+    // Compact footer: fixed localized message only — never the raw
+    // exception text.
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        )
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.failed_load_more),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(bottom = 8.dp)
+        Text(
+            text = stringResource(R.string.e3_load_more_failed),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        TextButton(onClick = onRetry) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.retry),
+                modifier = Modifier.size(16.dp)
             )
-            
-            Text(
-                text = errorMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            
-            Button(
-                onClick = onRetry,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                    contentColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Retry",
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.retry))
-            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(stringResource(R.string.retry))
         }
     }
 }

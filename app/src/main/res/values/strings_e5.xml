@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- E5 (Player & Playback Data) fix wave strings -->
+    <string name="e5_player_prepare_error">خطا در آماده‌سازی پخش‌کننده ویدیو</string>
+    <string name="e5_playback_error_network">خطا در اتصال به سرور پخش؛ اتصال شبکه را بررسی و دوباره تلاش کنید</string>
+    <string name="e5_playback_error_generic">خطا در پخش ویدیو</string>
+    <string name="e5_pause">توقف موقت</string>
+    <string name="e5_forward_30_seconds">+۳۰ ثانیه</string>
+</resources>

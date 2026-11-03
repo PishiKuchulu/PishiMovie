@@ -3,6 +3,7 @@ package com.pishimovie.data.repository
 import com.pishimovie.util.PLog
 import android.content.Context
 import com.pishimovie.data.model.SearchHistoryEntry
+import com.pishimovie.utils.StorageUtils
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -38,13 +39,19 @@ class SearchHistoryRepository(private val context: Context) {
     }
 
     fun getAll(): List<SearchHistoryEntry> {
+        val file = File(context.filesDir, fileName)
+        if (!file.exists()) return emptyList()
         return try {
-            val file = File(context.filesDir, fileName)
-            if (file.exists()) {
-                json.decodeFromString<List<SearchHistoryEntry>>(file.readText())
-            } else emptyList()
+            json.decodeFromString<List<SearchHistoryEntry>>(file.readText())
         } catch (e: Exception) {
             PLog.e(tag, "Error loading search history", e)
+            // Corrupt ≠ empty: move the bad file aside instead of letting a
+            // later save silently cement the loss.
+            try {
+                val corrupt = File(context.filesDir, "$fileName.corrupt")
+                if (corrupt.exists()) corrupt.delete()
+                file.renameTo(corrupt)
+            } catch (_: Exception) {}
             emptyList()
         }
     }
@@ -62,14 +69,22 @@ class SearchHistoryRepository(private val context: Context) {
     }
 
     fun clearAll() {
-        try {
-            File(context.filesDir, fileName).delete()
-        } catch (e: Exception) {
-            PLog.e(tag, "Error clearing search history", e)
+        // Same lock as add/remove: without it, a save that already read the
+        // old list could rewrite the file after the delete and resurrect
+        // the cleared history.
+        synchronized(lock) {
+            try {
+                File(context.filesDir, fileName).delete()
+            } catch (e: Exception) {
+                PLog.e(tag, "Error clearing search history", e)
+            }
         }
     }
 
     private fun write(items: List<SearchHistoryEntry>) {
-        File(context.filesDir, fileName).writeText(json.encodeToString(items))
+        StorageUtils.atomicWriteText(
+            File(context.filesDir, fileName),
+            json.encodeToString(items),
+        )
     }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by the E6 (Data Core & Persistence) fix wave.
+     Kept in a dedicated file so shared strings.xml is never edited here. -->
+<resources>
+    <string name="update_failed_title">خطا در به‌روزرسانی</string>
+    <string name="update_download_failed">دانلود به‌روزرسانی ناموفق بود</string>
+</resources>

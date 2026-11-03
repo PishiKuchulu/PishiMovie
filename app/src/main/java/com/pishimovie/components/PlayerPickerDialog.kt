@@ -2,14 +2,20 @@ package com.pishimovie.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -18,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +48,11 @@ import com.pishimovie.utils.DownloadUtils
  *
  * Both movies and series use this dialog so the playback system is identical.
  * The internal player is never forced — the user always picks.
+ *
+ * Options whose target player is not installed are disabled and labelled
+ * «نصب نیست» instead of silently failing in the intent layer. The option
+ * buttons live in the scrollable content area (not the confirmButton slot)
+ * so the dialog fits small/landscape screens.
  *
  * @param videoUrl the stream URL to play
  * @param title content title (for the internal player's continue-watching)
@@ -77,6 +89,19 @@ fun PlayerPickerDialog(
     val kmLabel = stringResource(R.string.km_player)
     val browserLabel = stringResource(R.string.browser_player)
     val cancelLabel = stringResource(R.string.cancel)
+    val notInstalledLabel = stringResource(R.string.e4_not_installed)
+
+    // Which external players actually exist on this device? Options for
+    // missing players are disabled below instead of failing on tap.
+    val vlcInstalled = remember(context) {
+        DownloadUtils.isPackageInstalled(context, DownloadUtils.VLC_PACKAGE)
+    }
+    val mxInstalled = remember(context) {
+        DownloadUtils.isAnyPackageInstalled(context, DownloadUtils.MX_PACKAGES)
+    }
+    val kmInstalled = remember(context) {
+        DownloadUtils.isAnyPackageInstalled(context, DownloadUtils.KM_PACKAGES)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -88,17 +113,23 @@ fun PlayerPickerDialog(
             )
         },
         text = {
-            Text(
-                text = choosePlayerMsg,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        confirmButton = {
+            // Scrollable content: message + all player options. (The buttons
+            // used to sit in the non-scrolling confirmButton slot and could
+            // overflow small screens.)
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text(
+                    text = choosePlayerMsg,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 // ── Built-in Player (ExoPlayer) — “پخش داخلی” ────────────
                 PlayerPickerButton(
                     icon = Icons.Default.PlayCircle,
@@ -122,9 +153,11 @@ fun PlayerPickerDialog(
 
                 // ── VLC ───────────────────────────────────────────────────
                 PlayerPickerButton(
-                    icon = Icons.Default.Movie,
+                    icon = Icons.Default.SmartDisplay,
                     label = vlcLabel,
                     isPrimary = false,
+                    enabled = vlcInstalled,
+                    notInstalledLabel = notInstalledLabel,
                     onClick = {
                         DownloadUtils.openWithVLC(context, videoUrl)
                         onDismiss()
@@ -133,9 +166,11 @@ fun PlayerPickerDialog(
 
                 // ── MX Player ────────────────────────────────────────────
                 PlayerPickerButton(
-                    icon = Icons.Default.Movie,
+                    icon = Icons.Default.OndemandVideo,
                     label = mxLabel,
                     isPrimary = false,
+                    enabled = mxInstalled,
+                    notInstalledLabel = notInstalledLabel,
                     onClick = {
                         DownloadUtils.openWithMXPlayer(context, videoUrl)
                         onDismiss()
@@ -144,9 +179,11 @@ fun PlayerPickerDialog(
 
                 // ── KMPlayer ─────────────────────────────────────────────
                 PlayerPickerButton(
-                    icon = Icons.Default.Movie,
+                    icon = Icons.Default.LiveTv,
                     label = kmLabel,
                     isPrimary = false,
+                    enabled = kmInstalled,
+                    notInstalledLabel = notInstalledLabel,
                     onClick = {
                         DownloadUtils.openWithKMPlayer(context, videoUrl)
                         onDismiss()
@@ -163,14 +200,14 @@ fun PlayerPickerDialog(
                         onDismiss()
                     },
                 )
-
-                // ── Cancel ───────────────────────────────────────────────
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(cancelLabel)
-                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(cancelLabel)
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -184,10 +221,13 @@ private fun PlayerPickerButton(
     icon: ImageVector,
     label: String,
     isPrimary: Boolean,
+    enabled: Boolean = true,
+    notInstalledLabel: String? = null,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = if (isPrimary) {
@@ -207,7 +247,13 @@ private fun PlayerPickerButton(
             contentDescription = null,
             modifier = Modifier.size(20.dp),
         )
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(end = 8.dp))
-        Text(label)
+        Spacer(modifier = Modifier.padding(end = 8.dp))
+        Text(
+            text = if (!enabled && notInstalledLabel != null) {
+                "$label ($notInstalledLabel)"
+            } else {
+                label
+            },
+        )
     }
 }

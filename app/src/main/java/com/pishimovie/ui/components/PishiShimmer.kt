@@ -114,8 +114,10 @@ fun PishiSkeletonPosterCard(
     ) {
         PishiShimmerBox(
             modifier = Modifier.fillMaxWidth(),
-            height = dimens.cardHeight,
-            cornerRadius = 12.dp,
+            // Matches PishiPosterCard exactly: poster area is width × 3/2
+            // (aspectRatio 2:3) with the signature ShapeCardDefault radius.
+            height = cardWidth * 1.5f,
+            cornerRadius = 20.dp,
             shimmerOffset = shimmerOffset,
         )
         Spacer(modifier = Modifier.height(8.dp))

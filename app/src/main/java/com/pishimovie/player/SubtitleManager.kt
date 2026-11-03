@@ -13,16 +13,26 @@ import com.pishimovie.data.model.SubtitleSettings
 /**
  * Phase 5 / Subtitle Center rewrite: SubtitleManager.
  *
- * Applies an extended [SubtitleSettings] payload to a [PlayerView]'s subtitle
- * view. Handles every property media3's [CaptionStyleCompat] exposes — font
- * size (with scale), text color + opacity, bold/italic typeface, edge type
- * (outline / drop-shadow / none), edge color, background color + opacity,
- * and vertical position — plus the new font-family override.
+ * Applies a [SubtitleSettings] payload to a [PlayerView]'s subtitle view.
+ * Settings actually honored by [applyToPlayerView] (keep this list in sync
+ * with the settings UI — controls for anything else must not be offered):
+ *  - Font size: `textSize` × `fontScale`/`subtitleScale` ([SubtitleSettings.effectiveScale]).
+ *  - Typeface: `fontFamily` plus the `bold` / `italic` style flags.
+ *  - Text color: `textColor` with `textOpacity`.
+ *  - Background: `backgroundColor` with `backgroundOpacity`, only when
+ *    `backgroundEnabled` is set (transparent otherwise).
+ *  - Edge: outline (when `borderThickness` > 0, colored by `borderColor`),
+ *    drop shadow (when `shadow` is set and no outline), or none.
+ *  - Vertical position: `position` / `bottomMargin`.
+ *  - Embedded-style handling: `ssaAssRendering` (apply embedded styles) and
+ *    `fitSubtitleIntoVideo` (apply embedded font sizes).
  *
- * Properties that media3 cannot honor directly (alignment, corner radius,
- * line spacing, RTL/Unicode flags, encoding) are stored on the settings
- * object for use by the live preview and any future custom subtitle
- * renderer.
+ * NOT honored here (media3's caption renderer has no equivalent): the
+ * timing offset `delayMs`, `textAlignment`, `lineSpacing`, `cornerRadius`,
+ * `shadowStrength`, `characterEncoding`, and the RTL/Unicode rendering
+ * flags. Track-level preferences from the same settings object (master
+ * `enabled` switch, preferred `language`) are applied separately by
+ * PlayerManager's track selector, not by this class.
  *
  * Thread-safety: all methods must be called on the main thread (ExoPlayer /
  * View requirement).

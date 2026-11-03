@@ -33,6 +33,22 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <!-- Package visibility (Android 11+): the player/download pickers check
+         whether external players and download managers are installed. -->
+    <queries>
+        <package android:name="org.videolan.vlc" />
+        <package android:name="com.mxtech.videoplayer.ad" />
+        <package android:name="com.mxtech.videoplayer.pro" />
+        <package android:name="com.kmplayer" />
+        <package android:name="com.kmplayerpro" />
+        <package android:name="com.kmplayer.google" />
+        <package android:name="com.kmplayer.d" />
+        <package android:name="com.dv.adm" />
+        <package android:name="com.dv.adm.pay" />
+        <package android:name="com.dv.get" />
+        <package android:name="com.dv.adm.old" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

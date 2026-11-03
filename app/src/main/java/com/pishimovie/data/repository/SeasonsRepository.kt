@@ -3,6 +3,7 @@ package com.pishimovie.data.repository
 import com.pishimovie.data.model.Episode
 import com.pishimovie.data.model.Season
 import com.pishimovie.data.model.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -20,8 +21,12 @@ class SeasonsRepository : BaseRepository() {
                 val url = "$BASE_URL/$seriesId/$API_KEY/"
                 
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
-                
+
                 parseSeasons(jsonData)
+            } catch (e: CancellationException) {
+                // Never wrap cancellation — the caller (ViewModel) relies on
+                // it to abandon stale loads.
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching seasons: ${e.message}", e)
             }

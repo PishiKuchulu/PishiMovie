@@ -48,7 +48,9 @@ fun PishiGlassTopScrim(
 @Composable
 fun PishiGlassBottomScrim(
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = LocalPishiDimens.current.xxl,
+    // Matches the bottom-nav height token so the scrim actually covers the
+    // bar area (was dimens.xxl = 24dp, far shorter than the 72dp bar).
+    height: androidx.compose.ui.unit.Dp = LocalPishiDimens.current.bottomNavHeight,
     color: Color = Color.Black,
 ) {
     Box(

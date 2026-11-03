@@ -1,6 +1,7 @@
 package com.pishimovie.data.repository
 
 import com.pishimovie.data.model.Genre
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -18,6 +19,8 @@ class GenreRepository : BaseRepository() {
                 val jsonData = executeRequest(url) { Request.Builder().url(it).build() }
                 
                 parseGenres(jsonData)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 throw Exception("Error fetching genres: ${e.message}", e)
             }

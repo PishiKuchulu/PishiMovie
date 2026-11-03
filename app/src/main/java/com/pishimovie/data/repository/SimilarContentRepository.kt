@@ -5,7 +5,6 @@ import com.pishimovie.data.model.Movie
 import com.pishimovie.data.model.Series
 import com.pishimovie.utils.LanguageUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
@@ -22,6 +21,12 @@ import kotlinx.coroutines.withContext
  *    and de-duplicate against Similar.
  *
  * NO API changes — both calls reuse [SearchRepository.search].
+ *
+ * Error contract: failures are NOT swallowed into empty lists. An empty
+ * list means "the search succeeded and found nothing"; exceptions
+ * (network, parse, cancellation) propagate to the caller so the UI can
+ * show a real error state with retry. The detail screen is the only
+ * caller and already catches.
  */
 class SimilarContentRepository {
 
@@ -35,15 +40,11 @@ class SimilarContentRepository {
         coroutineScope {
             val keyword = genres.firstOrNull()?.title?.takeIf { it.isNotBlank() }
                 ?: return@coroutineScope emptyList()
-            try {
-                val results = withContext(Dispatchers.IO) { searchRepo.search(keyword) }
-                results.posters
-                    .filter { LanguageUtils.shouldDisplayTitle(it.title) }
-                    .filter { it.title != title } // exclude self
-                    .take(20)
-            } catch (e: Exception) {
-                emptyList()
-            }
+            val results = withContext(Dispatchers.IO) { searchRepo.search(keyword) }
+            results.posters
+                .filter { LanguageUtils.shouldDisplayTitle(it.title) }
+                .filter { it.title != title } // exclude self
+                .take(20)
         }
 
     /**
@@ -54,15 +55,11 @@ class SimilarContentRepository {
     suspend fun getRecommended(title: String, excludeIds: Set<Int> = emptySet()): List<com.pishimovie.data.model.Poster> =
         coroutineScope {
             if (title.isBlank()) return@coroutineScope emptyList()
-            try {
-                val results = withContext(Dispatchers.IO) { searchRepo.search(title) }
-                results.posters
-                    .filter { LanguageUtils.shouldDisplayTitle(it.title) }
-                    .filter { it.id !in excludeIds }
-                    .filter { it.title != title }
-                    .take(20)
-            } catch (e: Exception) {
-                emptyList()
-            }
+            val results = withContext(Dispatchers.IO) { searchRepo.search(title) }
+            results.posters
+                .filter { LanguageUtils.shouldDisplayTitle(it.title) }
+                .filter { it.id !in excludeIds }
+                .filter { it.title != title }
+                .take(20)
         }
 }
