@@ -9,6 +9,12 @@ import com.pishimovie.util.PLog
 import com.pishimovie.ui.components.AppUpdateSettingsCard
 import com.pishimovie.ui.components.LocalAppUpdateController
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +34,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Movie
@@ -53,10 +61,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -73,11 +83,10 @@ import com.pishimovie.utils.StorageUtils
 /**
  * Issue 6 / Subtitle Center rewrite: Settings screen.
  *
- * The previous layout used expandable cards that packed many sliders +
- * switches + color rows inside a single cramped card body, causing widgets
- * to overlap. This version uses a FLAT LazyColumn where each control is its
- * own card with generous, consistent padding. No expandable cards, no
- * overlapping.
+ * Layout (2026-11-03, Farzad's accordion order): each section is ONE large
+ * rounded collapsible card — bold title + chevron header, animated
+ * expand/collapse — with its controls stacked flat inside. This replaced
+ * the flat label + per-control-card layout.
  *
  * Sections:
  *  - Player: Built-in / VLC / MX Player / KMPlayer (chips)
@@ -177,84 +186,46 @@ fun SettingsScreen(
         // ══════════════════════════════════════════════════════════════════
         // Section: Appearance (Theme & Language)
         // ══════════════════════════════════════════════════════════════════
-        item(key = "section_appearance") { SettingsSectionLabel(stringResource(R.string.theme_section)) }
+        item(key = "section_appearance") {
+            SettingsAccordionSection(
+                title = stringResource(R.string.theme_section),
+                initiallyExpanded = true,
+            ) {
+                SettingsControl(icon = Icons.Default.Palette, title = stringResource(R.string.theme_section)) {
+                    ThemeTypeChipRow(
+                        current = themeSettings.themeType,
+                        onSelect = { type ->
+                            scope.launch {
+                                val newSettings = themeSettings.copy(themeType = type)
+                                themeManager.saveThemeSettings(newSettings)
+                                themeSettingsState.value = newSettings
+                            }
+                        },
+                    )
+                }
 
-        item(key = "theme_selector") {
-            SettingsCard(icon = Icons.Default.Palette, title = stringResource(R.string.theme_section)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                ThemeTypeChipRow(
-                    current = themeSettings.themeType,
-                    onSelect = { type ->
-                        scope.launch {
-                            val newSettings = themeSettings.copy(themeType = type)
-                            themeManager.saveThemeSettings(newSettings)
-                            themeSettingsState.value = newSettings
+                SettingsControl(icon = Icons.Default.Language, title = stringResource(R.string.language_setting)) {
+                    LanguageChipRow(
+                        onSelect = { langCode ->
+                            val appLocale: androidx.core.os.LocaleListCompat = androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
+                            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(appLocale)
                         }
-                    },
-                )
-            }
-        }
-
-        item(key = "language_selector") {
-            SettingsCard(icon = Icons.Default.Language, title = stringResource(R.string.language_setting)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                LanguageChipRow(
-                    onSelect = { langCode ->
-                        val appLocale: androidx.core.os.LocaleListCompat = androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
-                        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(appLocale)
-                    }
-                )
+                    )
+                }
             }
         }
 
         // ══════════════════════════════════════════════════════════════════
         // Section: Player
         // ══════════════════════════════════════════════════════════════════
-        item(key = "section_player") { SettingsSectionLabel(stringResource(R.string.player_section)) }
-
-        item(key = "player_selector") {
-            SettingsCard(icon = Icons.Default.PlayCircle, title = stringResource(R.string.default_player)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                PlayerChipRow(
-                    current = videoPlayerSettings.preferredExternalPlayer,
-                    onSelect = { ep ->
-                        updateVideoPlayerSettings(
-                            videoPlayerSettings.copy(preferredExternalPlayer = ep)
-                        )
-                    },
-                )
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // Section: Playback
-        // ══════════════════════════════════════════════════════════════════
-        item(key = "section_playback") { SettingsSectionLabel(stringResource(R.string.playback_section)) }
-
-        item(key = "resume_playback") {
-            SettingsCard(icon = Icons.Default.Restore, title = stringResource(R.string.resume_playback)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.resume_playback),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = stringResource(R.string.resume_playback_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = videoPlayerSettings.rememberLastPosition,
-                        onCheckedChange = { v ->
+        item(key = "section_player") {
+            SettingsAccordionSection(title = stringResource(R.string.player_section)) {
+                SettingsControl(icon = Icons.Default.PlayCircle, title = stringResource(R.string.default_player)) {
+                    PlayerChipRow(
+                        current = videoPlayerSettings.preferredExternalPlayer,
+                        onSelect = { ep ->
                             updateVideoPlayerSettings(
-                                videoPlayerSettings.copy(rememberLastPosition = v)
+                                videoPlayerSettings.copy(preferredExternalPlayer = ep)
                             )
                         },
                     )
@@ -262,116 +233,129 @@ fun SettingsScreen(
             }
         }
 
-        item(key = "seek_interval") {
-            SettingsCard(icon = Icons.Default.PlayCircle, title = stringResource(R.string.seek_interval)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                SliderRow(
-                    valueText = "${videoPlayerSettings.seekTimeSeconds}s",
-                    value = videoPlayerSettings.seekTimeSeconds.toFloat(),
-                    onValueChangeFinished = { v ->
-                        updateVideoPlayerSettings(
-                            videoPlayerSettings.copy(seekTimeSeconds = v.toInt())
+        // ══════════════════════════════════════════════════════════════════
+        // Section: Playback
+        // ══════════════════════════════════════════════════════════════════
+        item(key = "section_playback") {
+            SettingsAccordionSection(title = stringResource(R.string.playback_section)) {
+                SettingsControl(icon = Icons.Default.Restore, title = stringResource(R.string.resume_playback)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.resume_playback_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
                         )
+                        Switch(
+                            checked = videoPlayerSettings.rememberLastPosition,
+                            onCheckedChange = { v ->
+                                updateVideoPlayerSettings(
+                                    videoPlayerSettings.copy(rememberLastPosition = v)
+                                )
+                            },
+                        )
+                    }
+                }
+
+                SettingsControl(icon = Icons.Default.PlayCircle, title = stringResource(R.string.seek_interval)) {
+                    SliderRow(
+                        valueText = "${videoPlayerSettings.seekTimeSeconds}s",
+                        value = videoPlayerSettings.seekTimeSeconds.toFloat(),
+                        onValueChangeFinished = { v ->
+                            updateVideoPlayerSettings(
+                                videoPlayerSettings.copy(seekTimeSeconds = v.toInt())
+                            )
+                        },
+                        valueRange = 5f..30f,
+                        steps = 24,
+                    )
+                }
+
+                SettingsControl(icon = Icons.Default.PlayCircle, title = stringResource(R.string.playback_speed)) {
+                    SliderRow(
+                        valueText = String.format("%.2fx", videoPlayerSettings.defaultPlaybackSpeed),
+                        value = videoPlayerSettings.defaultPlaybackSpeed,
+                        onValueChangeFinished = { v ->
+                            updateVideoPlayerSettings(
+                                videoPlayerSettings.copy(defaultPlaybackSpeed = v)
+                            )
+                        },
+                        valueRange = 0.25f..3.5f,
+                        steps = 12,
+                    )
+                }
+
+                // Subtitle Settings — shortcut row (full subtitle management
+                // lives on its own page: SubtitleSettingsScreen).
+                SettingsNavCard(
+                    icon = Icons.Default.Subtitles,
+                    title = stringResource(R.string.subtitle_settings),
+                    subtitle = stringResource(R.string.subtitle_settings_shortcut_subtitle),
+                    accentTint = MaterialTheme.colorScheme.primary,
+                    onClick = {
+                        navController?.navigate(com.pishimovie.navigation.AppScreens.SubtitleSettings.buildRoute(null))
                     },
-                    valueRange = 5f..30f,
-                    steps = 24,
                 )
             }
-        }
-
-        item(key = "playback_speed") {
-            SettingsCard(icon = Icons.Default.PlayCircle, title = stringResource(R.string.playback_speed)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                SliderRow(
-                    valueText = String.format("%.2fx", videoPlayerSettings.defaultPlaybackSpeed),
-                    value = videoPlayerSettings.defaultPlaybackSpeed,
-                    onValueChangeFinished = { v ->
-                        updateVideoPlayerSettings(
-                            videoPlayerSettings.copy(defaultPlaybackSpeed = v)
-                        )
-                    },
-                    valueRange = 0.25f..3.5f,
-                    steps = 12,
-                )
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // Subtitle Settings — shortcut card (full subtitle management lives
-        // on its own page: SubtitleSettingsScreen).
-        // ══════════════════════════════════════════════════════════════════
-        item(key = "subtitle_settings_shortcut") {
-            SettingsNavCard(
-                icon = Icons.Default.Subtitles,
-                title = stringResource(R.string.subtitle_settings),
-                subtitle = stringResource(R.string.subtitle_settings_shortcut_subtitle),
-                accentTint = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    navController?.navigate(com.pishimovie.navigation.AppScreens.SubtitleSettings.buildRoute(null))
-                },
-            )
         }
 
         // ══════════════════════════════════════════════════════════════════
         // Section: Storage
         // ══════════════════════════════════════════════════════════════════
-        item(key = "section_storage") { SettingsSectionLabel(stringResource(R.string.storage_section)) }
+        item(key = "section_storage") {
+            SettingsAccordionSection(title = stringResource(R.string.storage_section)) {
+                SettingsNavCard(
+                    icon = Icons.Default.Storage,
+                    title = stringResource(R.string.cache_management),
+                    subtitle = context.getString(R.string.cache_subtitle, cacheSize),
+                    accentTint = MaterialTheme.colorScheme.primary,
+                    onClick = {
+                        com.pishimovie.util.PerformanceOptimizer.clearCaches(context)
+                        cacheSize = "0.0 MB"
+                        Toast.makeText(context, context.getString(R.string.cache_cleared), Toast.LENGTH_SHORT).show()
+                    },
+                )
 
-        item(key = "cache_management") {
-            SettingsNavCard(
-                icon = Icons.Default.Storage,
-                title = stringResource(R.string.cache_management),
-                subtitle = context.getString(R.string.cache_subtitle, cacheSize),
-                accentTint = MaterialTheme.colorScheme.primary,
-                onClick = {
-                    com.pishimovie.util.PerformanceOptimizer.clearCaches(context)
-                    cacheSize = "0.0 MB"
-                    Toast.makeText(context, context.getString(R.string.cache_cleared), Toast.LENGTH_SHORT).show()
-                },
-            )
-        }
+                // Issue 2: Download Manager nav card removed — no Download Manager page.
 
-        // Issue 2: Download Manager nav card removed — no Download Manager page.
-
-        item(key = "watched_episodes") {
-            SettingsNavCard(
-                icon = Icons.Default.Movie,
-                title = stringResource(R.string.series_episodes_cache),
-                subtitle = context.getString(R.string.series_episodes_size,
-                    if (watchedEpisodesCacheSize > 0) "$watchedEpisodesCacheSize B" else context.getString(R.string.empty)
-                ),
-                accentTint = MaterialTheme.colorScheme.primary,
-                onClick = { showClearWatchedEpisodesDialog = true },
-            )
+                SettingsNavCard(
+                    icon = Icons.Default.Movie,
+                    title = stringResource(R.string.series_episodes_cache),
+                    subtitle = context.getString(R.string.series_episodes_size,
+                        if (watchedEpisodesCacheSize > 0) "$watchedEpisodesCacheSize B" else context.getString(R.string.empty)
+                    ),
+                    accentTint = MaterialTheme.colorScheme.primary,
+                    onClick = { showClearWatchedEpisodesDialog = true },
+                )
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════
         // Section: About
         // ══════════════════════════════════════════════════════════════════
-        item(key = "section_about") { SettingsSectionLabel(stringResource(R.string.about_section)) }
+        item(key = "section_about") {
+            SettingsAccordionSection(title = stringResource(R.string.about_section)) {
+                SettingsNavCard(
+                    icon = Icons.Outlined.Info,
+                    title = stringResource(R.string.about_pishimovie),
+                    subtitle = stringResource(R.string.about_subtitle),
+                    accentTint = MaterialTheme.colorScheme.primary,
+                    onClick = { navController?.navigate("about") },
+                )
 
-        item(key = "about") {
-            SettingsNavCard(
-                icon = Icons.Outlined.Info,
-                title = stringResource(R.string.about_pishimovie),
-                subtitle = stringResource(R.string.about_subtitle),
-                accentTint = MaterialTheme.colorScheme.primary,
-                onClick = { navController?.navigate("about") },
-            )
-        }
+                AppUpdateSettingsCard(LocalAppUpdateController.current)
 
-        item(key = "app_update") {
-            AppUpdateSettingsCard(LocalAppUpdateController.current)
-        }
-
-        item(key = "reset") {
-            SettingsNavCard(
-                icon = Icons.Default.Restore,
-                title = stringResource(R.string.reset_to_defaults),
-                subtitle = stringResource(R.string.reset_subtitle),
-                accentTint = MaterialTheme.colorScheme.error,
-                onClick = { showResetDialog = true },
-            )
+                SettingsNavCard(
+                    icon = Icons.Default.Restore,
+                    title = stringResource(R.string.reset_to_defaults),
+                    subtitle = stringResource(R.string.reset_subtitle),
+                    accentTint = MaterialTheme.colorScheme.error,
+                    onClick = { showResetDialog = true },
+                )
+            }
         }
 
         item(key = "spacer") { Spacer(modifier = Modifier.height(16.dp)) }
@@ -417,73 +401,112 @@ fun SettingsScreen(
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * Small uppercase section label.
+ * One collapsible settings section in the accordion layout (Farzad's
+ * reference screenshot, 2026-11-03): a single large rounded card with a
+ * bold section title and a chevron; tapping the header expands/collapses
+ * the section's controls with an animated height change. Expansion state
+ * is saveable, so it survives rotation and process recreation.
  */
 @Composable
-private fun SettingsSectionLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp),
-        letterSpacing = 1.5.sp,
-    )
-}
-
-/**
- * A flat card containing a single setting control. The icon + title form the
- * header row; [content] is rendered below with consistent spacing.
- */
-@Composable
-private fun SettingsCard(
-    icon: ImageVector,
+private fun SettingsAccordionSection(
     title: String,
+    initiallyExpanded: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "settingsSectionChevron",
+    )
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(chevronRotation),
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                content()
             }
-            content()
         }
     }
 }
 
 /**
- * Tappable card that navigates / triggers an action.
+ * A single setting control inside an accordion section. The icon + title
+ * form the header row; [content] is rendered below with consistent
+ * spacing. Flat (no card shell) — the section card provides the surface.
+ */
+@Composable
+private fun SettingsControl(
+    icon: ImageVector,
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        content()
+    }
+}
+
+/**
+ * Tappable row that navigates / triggers an action. Flat (no card shell)
+ * so it sits cleanly inside an accordion section.
  */
 @Composable
 private fun SettingsNavCard(
@@ -493,51 +516,46 @@ private fun SettingsNavCard(
     accentTint: Color,
     onClick: () -> Unit,
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(accentTint.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accentTint.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentTint,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentTint,
+                modifier = Modifier.size(20.dp),
+            )
         }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
