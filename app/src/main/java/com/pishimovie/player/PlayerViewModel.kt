@@ -341,9 +341,9 @@ class PlayerViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    SubtitleSettingsStorage.mergePerVideo(ctx, url) {
+                    SubtitleSettingsStorage.mergePerVideo(ctx, url, patch = {
                         copy(selectedTrackKey = trackKey)
-                    }
+                    })
                 }
             } catch (_: Exception) {}
         }
