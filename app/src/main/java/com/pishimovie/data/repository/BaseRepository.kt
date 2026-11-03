@@ -1,8 +1,6 @@
 package com.pishimovie.data.repository
 
 import com.pishimovie.BuildConfig
-import com.pishimovie.data.cache.ApiResponseCache
-import com.pishimovie.ui.theme.PishiContextHolder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -58,10 +56,9 @@ private const val OVERALL_DEADLINE_MS = 45_000L
  *  - The whole chain has an overall 45 s deadline ([withTimeout]) and
  *    per-attempt timeouts are tuned (primary 10/20 s, helpers 8/15 s)
  *    instead of an unbounded 30/30 s per host.
- *  - GETs are routed through [ApiResponseCache.cachedGet] first (TTL
- *    memory+disk cache, previously wired to zero callers); only when the
- *    cache cannot produce a body does the primary→helper chain run, so
- *    error semantics stay exactly the chain's.
+ *  - GETs are NOT routed through the response cache: API payloads embed
+ *    signed stream URLs with rotating tokens, and a cached body strands
+ *    them (the v1.4.0 total-playback regression, fixed in v1.4.1).
  */
 open class BaseRepository {
     /** Shared process-wide client (primary-attempt tuning). */
@@ -77,22 +74,16 @@ open class BaseRepository {
         primaryUrl: String,
         requestBuilder: (String) -> Request,
     ): String {
-        // Phase 1 — response cache. All current callers issue plain GETs
-        // (no custom headers), which is exactly what cachedGet performs.
-        // A non-null body ends the call; any failure falls through to the
-        // authoritative chain below.
-        cacheInstance()?.let { cache ->
-            try {
-                cache.cachedGet(primaryUrl)?.let { return it }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Cache-layer failure (HTTP status, transport) — the chain
-                // below decides the outcome and produces the real error.
-            }
-        }
+        // NO response cache in front of this chain — deliberately. API
+        // responses embed signed stream URLs whose tokens rotate; serving a
+        // cached body (the ApiResponseCache disk TTL was a fixed 1 hour)
+        // strands those URLs and every playback then fails with an HTTP
+        // error at the CDN. That is exactly the v1.4.0 regression this
+        // hotfix (v1.4.1) removes: every call fetches fresh, exactly like
+        // v1.3.1. ApiResponseCache stays in the tree, unwired, until a
+        // future change can cache only non-source payloads safely.
 
-        // Phase 2 — primary → helper fallback chain, under one deadline.
+        // Primary → helper fallback chain, under one deadline.
         return try {
             withTimeout(OVERALL_DEADLINE_MS) {
                 withContext(Dispatchers.IO) {
@@ -142,15 +133,5 @@ open class BaseRepository {
             // "job abandoned").
             throw Exception("Request timed out after ${OVERALL_DEADLINE_MS / 1000}s for $primaryUrl", e)
         }
-    }
-
-    /**
-     * The shared [ApiResponseCache], or null when the app context holder
-     * has not been initialized yet (very early calls simply skip caching
-     * instead of crashing on the lateinit).
-     */
-    private fun cacheInstance(): ApiResponseCache? {
-        val ctx = runCatching { PishiContextHolder.context }.getOrNull() ?: return null
-        return ApiResponseCache.get(ctx)
     }
 }
