@@ -5,7 +5,7 @@
 ### سینمای جیبی تو — Your pocket cinema
 
 [![Build APK](https://github.com/PishiKuchulu/PishiMovie/actions/workflows/build-apk.yml/badge.svg)](https://github.com/PishiKuchulu/PishiMovie/actions/workflows/build-apk.yml)
-![Version](https://img.shields.io/badge/version-1.2.2-blue)
+![Version](https://img.shields.io/github/v/release/PishiKuchulu/PishiMovie)
 ![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.09-4285F4?logo=jetpackcompose&logoColor=white)
@@ -53,11 +53,11 @@
 ```bash
 git clone https://github.com/PishiKuchulu/PishiMovie.git
 cd PishiMovie
-./gradlew assembleDebug
-# خروجی: app/build/outputs/apk/debug/app-debug.apk
+bash ./gradlew assembleDebug
+# خروجی: app/build/outputs/apk/debug/app-universal-debug.apk
 ```
 
-پیش‌نیازها: **JDK 17** و Android SDK (compileSdk 35).
+پیش‌نیازها: **JDK 17 یا بالاتر** و Android SDK (compileSdk 35)؛ دیمون Gradle روی تول‌چین JDK 21 اجرا می‌شود که در صورت نیاز به‌صورت خودکار تأمین می‌شود.
 هر push به برنچ `main` به‌صورت خودکار APK می‌سازد و در [Releases](https://github.com/PishiKuchulu/PishiMovie/releases/tag/latest) منتشر می‌کند. 🤖
 
 ## 📸 اسکرین‌شات‌ها
@@ -78,7 +78,7 @@ Media3 playback with HLS/DASH · Persian-friendly subtitles (SRT/ASS/VTT/embedde
 and per-video settings · downloads for offline watching · full Android TV support · Picture-in-Picture ·
 cinematic themes (Netflix/Pishi + true AMOLED black) · watch statistics, continue-watching, favorites & watchlist.
 
-**Build:** `./gradlew assembleDebug` (JDK 17 required) → `app/build/outputs/apk/debug/app-debug.apk`.
+**Build:** `bash ./gradlew assembleDebug` (JDK 17+; the Gradle daemon runs on a JDK 21 toolchain, auto-provisioned when needed) → `app/build/outputs/apk/debug/app-universal-debug.apk`.
 Every push to `main` auto-builds and publishes the APK to [Releases](https://github.com/PishiKuchulu/PishiMovie/releases/tag/latest). 🤖
 
 <div align="center">
