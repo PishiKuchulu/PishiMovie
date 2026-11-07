@@ -28,23 +28,28 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
+      - name: Resolve version
+        # Single source of truth: versionName in app/build.gradle.kts.
+        id: ver
+        run: echo "version=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
       - name: Rename APK
         # The project builds per-ABI APK splits; the universal APK runs on all devices.
-        run: mv app/build/outputs/apk/debug/app-universal-debug.apk app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
+        run: mv app/build/outputs/apk/debug/app-universal-debug.apk app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
 
       - name: Upload debug APK (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PishiMovie-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          name: pishimovie-debug-apk
+          path: app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
 
-      - name: Publish to rolling release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "Latest build — آخرین بیلد"
+          tag_name: build-${{ github.run_number }}
+          name: PishiMovie build ${{ github.run_number }} (نسخه ${{ steps.ver.outputs.version }})
+          draft: false
+          prerelease: true
+          files: app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
           body: |
-            آخرین بیلد خودکار از برنچ `main` (نسخه 1.2.2).
-            Latest automatic debug build from the `main` branch.
-          files: app/build/outputs/apk/debug/pishimovie-1.2.2-debug.apk
+            این بیلد آزمایشی است و برای تست انتشار شده است.
