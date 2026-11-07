@@ -428,6 +428,7 @@ private fun VideoPlayerScreen(
     val currentPosition by viewModel.currentPosition.collectAsState()
     val duration by viewModel.duration.collectAsState()
     val playerError by viewModel.playerError.collectAsState()
+    val playerErrorCode by viewModel.playerErrorCode.collectAsState()
     val isBuffering by viewModel.isBuffering.collectAsState()
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val tracks by viewModel.tracks.collectAsState()
@@ -623,6 +624,10 @@ private fun VideoPlayerScreen(
                         Text(stringResource(R.string.playback_error), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(playerError ?: "", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                        if (playerErrorCode != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(playerErrorCode ?: "", color = Color.White.copy(alpha = 0.45f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             androidx.compose.material3.Button(onClick = { viewModel.retry() }) {
@@ -696,6 +701,10 @@ private fun VideoPlayerScreen(
                     Text(stringResource(R.string.playback_error), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(playerError ?: "Unknown error", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                    if (playerErrorCode != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(playerErrorCode ?: "", color = Color.White.copy(alpha = 0.45f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         androidx.compose.material3.Button(onClick = { viewModel.retry() }) {

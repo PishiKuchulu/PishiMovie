@@ -2,11 +2,15 @@
 <!--
   PishiMovie network security config.
 
-  Cleartext (HTTP) is DISABLED by default. It is explicitly allowed only for
-  the three known backend hosts, whose streaming endpoints may serve HTTP
-  source URLs. Every other host — including the dynamic CDN domains returned
-  by the API at runtime — is HTTPS-only: playback fails closed with a visible
-  error instead of silently leaking traffic over cleartext.
+  Cleartext (HTTP) is PERMITTED app-wide since v1.4.3. History: up to
+  v1.4.2 it was allowed only for the three known backend hosts — but the
+  backend hands out stream URLs as plain http on rotating CDN hosts
+  (dl*.info / *.ir families) that no static allowlist can enumerate, so
+  the platform blocked every playback request in-process
+  (ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED) and no video played at all.
+  Permitting cleartext is a capability, not a downgrade: the API base
+  URLs are https, so API traffic stays on TLS exactly as before; only
+  the backend-issued stream URLs use http, as they do in a browser.
 
   NOTE (pinning): certificate pinning for the three backend hosts is
   intentionally NOT enabled yet. A pin-set was specified for this release,
@@ -28,13 +32,15 @@
 -->
 <network-security-config>
 
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
 
-    <!-- Known backend hosts only: API + helper servers. -->
+    <!-- Backend hosts (API + helper servers): cleartext allowed, as
+         everywhere else since v1.4.3 — kept explicit for the future
+         pin-set below, which applies to these hosts only. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">server-hi-speed-iran.info</domain>
         <domain includeSubdomains="true">hostinnegar.com</domain>

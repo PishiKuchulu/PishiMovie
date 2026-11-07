@@ -57,6 +57,13 @@ class PlayerViewModel : ViewModel() {
     private val _playerError = MutableStateFlow<String?>(null)
     val playerError: StateFlow<String?> = _playerError.asStateFlow()
 
+    // The raw ExoPlayer error-code name (e.g. ERROR_CODE_IO_BAD_HTTP_STATUS)
+    // shown small under the localized category message, so a screenshot of
+    // the error screen identifies the exact failure class at a glance —
+    // the category message alone buckets network/HTTP/cleartext together.
+    private val _playerErrorCode = MutableStateFlow<String?>(null)
+    val playerErrorCode: StateFlow<String?> = _playerErrorCode.asStateFlow()
+
     private val _isBuffering = MutableStateFlow(false)
     val isBuffering: StateFlow<Boolean> = _isBuffering.asStateFlow()
 
@@ -180,7 +187,7 @@ class PlayerViewModel : ViewModel() {
         retryJob?.cancel()
         autoRetryCount = 0
         hasPlaybackReady = false
-        _playerError.value = null
+        _playerError.value = null; _playerErrorCode.value = null
         _qualityMode.value = QualityMode.AUTO
         _showForwardChip.value = false
 
@@ -356,7 +363,7 @@ class PlayerViewModel : ViewModel() {
     fun retry() {
         retryJob?.cancel()
         autoRetryCount = 0
-        _playerError.value = null
+        _playerError.value = null; _playerErrorCode.value = null
         val p = player
         if (p == null) {
             // Prepare itself failed — rebuild the player from the stored
@@ -400,7 +407,7 @@ class PlayerViewModel : ViewModel() {
         retryJob?.cancel()
         retryJob = viewModelScope.launch {
             delay(backoffMs)
-            _playerError.value = null
+            _playerError.value = null; _playerErrorCode.value = null
             val p = player ?: return@launch
             playerManager?.retry(retryTargetPosition(p))
         }
@@ -515,7 +522,7 @@ class PlayerViewModel : ViewModel() {
                 // budget for the next incident.
                 autoRetryCount = 0
                 // Clear any error — playback recovered.
-                _playerError.value = null
+                _playerError.value = null; _playerErrorCode.value = null
             } else if (playbackState == Player.STATE_ENDED) {
                 _isPlaying.value = false
                 // Finished: the content leaves Continue Watching (episodes
@@ -543,6 +550,7 @@ class PlayerViewModel : ViewModel() {
 
         override fun onPlayerError(error: PlaybackException) {
             _playerError.value = localizedErrorMessage(error)
+            _playerErrorCode.value = error.errorCodeName
             scheduleAutoRetry()
         }
     }
