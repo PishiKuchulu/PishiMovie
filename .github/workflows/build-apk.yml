@@ -40,16 +40,16 @@ jobs:
       - name: Upload debug APK (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: pishimovie-debug-apk
-          path: app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
+          name: PishiMovie-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
 
-      - name: Create GitHub Release
+      - name: Publish to rolling release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: PishiMovie build ${{ github.run_number }} (نسخه ${{ steps.ver.outputs.version }})
-          draft: false
-          prerelease: true
-          files: app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
+          tag_name: latest
+          name: "Latest build — آخرین بیلد"
           body: |
-            این بیلد آزمایشی است و برای تست انتشار شده است.
+            آخرین بیلد خودکار از برنچ `main` (نسخه ${{ steps.ver.outputs.version }}).
+            Latest automatic debug build from the `main` branch.
+          files: app/build/outputs/apk/debug/pishimovie-${{ steps.ver.outputs.version }}-debug.apk
