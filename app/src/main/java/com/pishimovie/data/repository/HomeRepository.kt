@@ -31,19 +31,37 @@ class HomeRepository(private val context: Context) {
     private val countryPostersRepo = CountryPostersRepository()
     private val continueWatchingRepo = ContinueWatchingRepository(context)
     private val recommendationEngine = RecommendationEngine(context)
+    private val heroFeedRepo = HeroFeedRepository()
 
     /**
-     * Hero banner carousel items.
+     * Hero banner carousel items — cap [HERO_TARGET_COUNT] (10).
      *
-     * Logic (Phase 10):
-     *  - ONLY shows Movies OR Series from United States (USA).
-     *  - ONLY shows Recently Added items (sorted by year desc).
-     *  - Newest items appear first.
-     *  - Fallback: if no US items found in the recently-added page, returns empty
-     *    (or we could fetch more pages, but for now we keep it simple).
-     *  - Cap at 7 items.
+     * Primary source: the curated hero feed ([HeroFeedRepository]),
+     * which mirrors an external index site's hero by title name and
+     * resolves the titles against our own backend. Any slot the feed
+     * cannot fill (unmatched titles, feed down, offline) is topped up
+     * from the built-in logic below, so the hero is always full and
+     * the feed can never break Home.
      */
     suspend fun getHeroBanners(): List<Movie> = safe {
+        val feed = runCatching { heroFeedRepo.getHeroItems() }
+            .getOrDefault(emptyList())
+            .filter { it.image.isNotEmpty() && LanguageUtils.shouldDisplayTitle(it.title) }
+            .distinctBy { it.id }
+            .take(HERO_TARGET_COUNT)
+
+        if (feed.size >= HERO_TARGET_COUNT) return@safe feed
+
+        val seen = feed.map { it.id }.toHashSet()
+        val topUp = fallbackHeroBanners().filter { seen.add(it.id) }
+        (feed + topUp).take(HERO_TARGET_COUNT)
+    }
+
+    /**
+     * Built-in hero (the pre-feed logic): newest movies and series via
+     * BY_YEAR, interleaved and sorted by year descending.
+     */
+    private suspend fun fallbackHeroBanners(): List<Movie> {
         // Fetch newest movies and series via BY_YEAR
         val newestMovies = runCatching {
             movieRepo.getMovies(page = 0, genreId = 0, filterType = FilterType.BY_YEAR)
@@ -59,8 +77,8 @@ class HomeRepository(private val context: Context) {
         // Interleave movies and series to ensure a mixed feed
         val mixed = interleave(newestMovies, newestSeries)
 
-        // Sort by year descending (absolute newest first) and take 7
-        mixed.sortedByDescending { it.year }.take(7)
+        // Sort by year descending (absolute newest first)
+        return mixed.sortedByDescending { it.year }
     }
 
     /** Interleaves two lists so movies and series alternate. */
@@ -297,6 +315,11 @@ class HomeRepository(private val context: Context) {
     /** Continue-watching repo passthrough (so the VM can remove items). */
     fun removeContinueWatching(id: Int, type: String) =
         continueWatchingRepo.remove(id, type)
+
+    private companion object {
+        /** Hero carousel size — matches the curated feed's item count. */
+        const val HERO_TARGET_COUNT = 10
+    }
 }
 
 /**
