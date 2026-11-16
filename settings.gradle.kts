@@ -23,3 +23,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PishiMovie"
 include(":app")
+include(":shared")
+include(":desktopApp")

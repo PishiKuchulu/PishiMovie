@@ -1,0 +1,46 @@
+package com.pishimovie.util
+
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
+import com.pishimovie.platform.PlatformContextHolder
+
+actual object NetworkUtils {
+
+    actual fun isOnline(): Boolean = isOnline(PlatformContextHolder.appContext)
+
+    actual fun isUnmetered(): Boolean = isUnmetered(PlatformContextHolder.appContext)
+
+    /** Returns true if the device currently has any active network connection. */
+    fun isOnline(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            // NET_CAPABILITY_VALIDATED is the ideal fast path, but some
+            // networks (certain ISPs / captive setups) never pass the
+            // system's validation while internet genuinely works. Requiring
+            // VALIDATED made those users look permanently "offline" (and
+            // e.g. search silently served only stale cache) — so INTERNET
+            // alone counts as online and the real request is the judge.
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } else {
+            @Suppress("DEPRECATION")
+            val info = cm.activeNetworkInfo
+            @Suppress("DEPRECATION")
+            info != null && info.isConnected
+        }
+    }
+
+    /** Returns true if connected to Wi-Fi (not metered). */
+    fun isUnmetered(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED).not()
+        } else false
+    }
+}
