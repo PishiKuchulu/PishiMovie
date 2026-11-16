@@ -1,0 +1,27 @@
+name: Desktop CI
+
+# Phase 0 gate for the desktop branch: the shared module and the
+# desktop app must compile. Runs only on the desktop branch so the
+# Android release chain on main is never affected.
+on:
+  push:
+    branches: [desktop]
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compile shared (desktop target) and desktop app
+        run: |
+          chmod +x gradlew
+          ./gradlew :shared:compileKotlinDesktop :desktopApp:compileKotlinJvm --stacktrace
