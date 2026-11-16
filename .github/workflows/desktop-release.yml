@@ -1,0 +1,99 @@
+name: Desktop Release (Windows + Linux installers)
+
+# Phase 3 packaging for the desktop port. Triggered by tags like
+# desktop-v1.0.0 (kept separate from the Android v* release chain).
+# Windows: bundles libmpv-2.dll into the app resources so playback
+# works out of the box. Linux: the .deb expects a system mpv
+# (libmpv) installation — the app shows a clear in-app message when
+# the library is missing.
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows installers (exe + msi)
+    runs-on: windows-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Fetch libmpv for Windows
+        shell: pwsh
+        run: |
+          $rss = Invoke-WebRequest -UseBasicParsing "https://sourceforge.net/projects/mpv-player-windows/rss?path=/libmpv"
+          $name = [regex]::Match($rss.Content, "mpv-dev-x86_64-v3-[^""<]+\.7z").Value
+          if (-not $name) { throw "libmpv dev package not found in the SourceForge RSS feed" }
+          Write-Host "libmpv package: $name"
+          Invoke-WebRequest -OutFile mpv-dev.7z "https://sourceforge.net/projects/mpv-player-windows/files/libmpv/$name/download"
+          7z x mpv-dev.7z -ompv-dev | Out-Null
+          New-Item -ItemType Directory -Force desktopApp/app-resources/windows | Out-Null
+          $dll = Get-ChildItem -Recurse -Filter libmpv-2.dll mpv-dev | Select-Object -First 1
+          if (-not $dll) { throw "libmpv-2.dll not found in the dev package" }
+          Copy-Item $dll.FullName desktopApp/app-resources/windows/
+
+      - name: Package installers
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace "^desktop-v", ""
+          if ("${{ github.ref_type }}" -ne "tag") { $version = "1.0.0" }
+          .\gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi --no-daemon -PdesktopVersion=$version
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pishimovie-windows-installers
+          path: |
+            desktopApp/build/compose/binaries/main/exe/*.exe
+            desktopApp/build/compose/binaries/main/msi/*.msi
+
+      - name: Attach to GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktopApp/build/compose/binaries/main/exe/*.exe
+            desktopApp/build/compose/binaries/main/msi/*.msi
+
+  linux:
+    name: Linux package (deb)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Package deb
+        run: |
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          if [ "${{ github.ref_type }}" != "tag" ]; then VERSION="1.0.0"; fi
+          ./gradlew :desktopApp:packageDeb --no-daemon -PdesktopVersion="$VERSION"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pishimovie-linux-deb
+          path: desktopApp/build/compose/binaries/main/deb/*.deb
+
+      - name: Attach to GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktopApp/build/compose/binaries/main/deb/*.deb
